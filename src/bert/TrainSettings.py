@@ -5,7 +5,8 @@ class TrainSettings():
     self.settings = {
       'MAX_LEN': MAX_LEN,
       'BATCH_SIZE': BATCH_SIZE,
-      'PRE_TRAINED_MODEL_NAME': PRE_TRAINED_MODEL_NAME
+      'PRE_TRAINED_MODEL_NAME': PRE_TRAINED_MODEL_NAME,
+      'DATASET_NAME': 'base'
     }
 
   def save(self, filename="setting.json"):
