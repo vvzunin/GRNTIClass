@@ -11,13 +11,11 @@ def convertToDictList(l):
   for rgnti in l:
     s = rgnti.split('.')
     if (len(s) == 3):
-      l3.append(s[2])
+      l3.append('.'.join(s))
+    if (len(s) == 2):
+      l2.append('.'.join(s))
     else:
-      l3.append('')
-    if (len(s) >= 2):
-      l2.append(s[1])
-    else:
-      l2.append('')
+      l2.append('.'.join(s[:2]))
     l1.append(s[0])    
     
   l1 = '\\'.join(l1)
