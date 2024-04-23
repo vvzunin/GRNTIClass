@@ -1,0 +1,95 @@
+import torch
+from torch import nn
+import numpy as np
+import json
+import pandas as pd
+from tqdm import tqdm
+import re
+
+class BertDatasetTrainGrnti1(torch.utils.data.Dataset):
+    def __init__(self, df, max_len, tokenizer):
+
+        self.X= df['text'].to_list()
+        self.y = df['target_coded'].to_list()
+        self.tokenizer = tokenizer
+        self.max_length = max_len
+               
+    def __len__(self):
+        return len(self.X)
+        
+    def __getitem__(self, idx):
+        text = self.X[idx]
+        target = self.y[idx]
+
+        tokenizer_output = self.tokenizer.encode_plus(
+            text,
+            max_length = self.max_length,
+            return_tensors = 'pt',
+            padding = 'max_length')
+        return {
+            "input_ids": tokenizer_output['input_ids'].squeeze(0)[:self.max_length], 
+            "mask": tokenizer_output['attention_mask'].squeeze(0)[:self.max_length],
+            'targets': torch.tensor(target, dtype=torch.long)
+        }
+
+    
+def clean(text): 
+    text = re.sub(r"[^а-яёА-ЯЁa-zA-Z]", " ", text)
+    
+    Special = '@#!?+&*[]-%:/()$=><|{}^' 
+    for s in Special:
+        text = text.replace(s, "")
+        
+    return text
+
+def truncating_geting_text_df(df, df_test, number_of_indexes_for_truncation):
+    list_of_few_values = pd.value_counts(df['RGNTI1'])[-number_of_indexes_for_truncation:].index.to_list()
+    df_trunc = df.query('RGNTI1 not in @list_of_few_values')
+    df_test_trunc = df_test.query('RGNTI1 not in @list_of_few_values')
+
+    unique_vals = df_trunc['RGNTI1'].unique()
+    unique_vals_test = df_test_trunc['RGNTI1'].unique()
+
+    set_targets = set(unique_vals) 
+    coding =  range(len(set_targets))
+    dict_Vinit_code_int = dict(zip(set_targets, coding))
+
+    with open("source/my_grnti1_int.json", "w") as outfile: 
+        json.dump(dict_Vinit_code_int, outfile)
+    grnti_mapping_dict = json.load(open('source\\my_grnti1_int.json')) # некоторых значений в словаре нет
+
+    n_classes = len(grnti_mapping_dict)
+
+    df_trunc['target_coded'] = df_trunc['target'].apply(lambda x: grnti_mapping_dict[x])
+    df_test_trunc['target_coded'] = df_test_trunc['target'].apply(lambda x: grnti_mapping_dict[x])
+
+    df_trunc['text'] = (df_trunc['title'].apply(lambda x:x+' ' if x[-1] in 
+                                                ('.', '!', '?') else x+'. ') + df_trunc['ref_txt'])
+    df_test_trunc['text'] = (df_test_trunc['title'].apply(lambda x:x+' ' if x[-1] 
+                                            in ('.', '!', '?') else x+'. ') + df_test_trunc['ref_txt'])
+
+
+    df_trunc['text'] = df_trunc['text'].apply(lambda s : clean(s))
+    df_test_trunc['text'] = df_test_trunc['text'].apply(lambda s : clean(s))
+
+    return df_trunc, df_test_trunc, n_classes
+
+def teach_model(model, dataloader, device, save_path):
+    model.to(device)
+    model.train()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+
+    for i, batch in enumerate(tqdm(dataloader)):
+        inputs = batch['input_ids'].to(device)
+        mask = batch['mask'].to(device)
+        y_train = batch['targets'].to(device)
+
+        y_pred = model(input_ids = inputs, attention_mask = mask)
+
+        loss = nn.functional.cross_entropy(y_pred.logits, y_train)
+        if not (i % 100):
+            print(f'coress entropy iteration {i}:', loss)
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+    torch.save(model.state_dict(), save_path)
