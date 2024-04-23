@@ -5,6 +5,10 @@ import json
 import pandas as pd
 from tqdm import tqdm
 import re
+from peft import LoraConfig, get_peft_model 
+from transformers import AutoTokenizer
+from transformers import AutoModelForSequenceClassification
+
 
 class BertDatasetTrainGrnti1(torch.utils.data.Dataset):
     def __init__(self, df, max_len, tokenizer):
@@ -73,6 +77,34 @@ def truncating_geting_text_df(df, df_test, number_of_indexes_for_truncation):
     df_test_trunc['text'] = df_test_trunc['text'].apply(lambda s : clean(s))
 
     return df_trunc, df_test_trunc, n_classes
+
+def creating_bert_peft_lora_model_lerning(pre_trained_model_name, n_classes, r, 
+                                          lora_alpha,
+                                          lora_dropout,
+                                          bias,
+                                          task_type):
+
+    tokenizer = AutoTokenizer.from_pretrained(pre_trained_model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name, 
+                                                               num_labels=n_classes)
+
+    for param in model.parameters():
+        param.requires_grad = False
+        if param.ndim == 1:
+            param.data = param.data.to(torch.float32)
+
+    model.classifier = nn.Linear(model.config.hidden_size, n_classes)
+    config = LoraConfig(
+        r=r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        bias=bias,
+        task_type=task_type
+    )
+
+    model_peft = get_peft_model(model, config)
+    return model_peft, tokenizer
+
 
 def teach_model(model, dataloader, device, save_path):
     model.to(device)
