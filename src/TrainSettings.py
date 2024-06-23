@@ -16,6 +16,9 @@ class TrainSettings():
         'embedding_size': 64,
         'window_size': 4,
         'num_sampled': 32
+      },
+      'perceptron': {
+        'size': 4
       }
     }
 
