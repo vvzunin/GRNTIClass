@@ -82,6 +82,7 @@ def prepareText(version, lang, dataset_type, print_time = True):
   print("New version saved to " + out_file + "\nTime: {}\n".format(datetime.datetime.now() - start_time))
 
 datasets_path = "datasets/"
+datasets_path = "./datasets/"
 lang = ["ru", "eng"]
 dataset_type = ["train", "test"]
 versions = ["base"]
