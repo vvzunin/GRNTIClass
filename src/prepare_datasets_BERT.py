@@ -265,27 +265,10 @@ def prepair_compute_metrics(n_classes):
         }
     return compute_metrics
 
-def prepair_model_datasets(df, df_test, n_classes,
+def prepair_datasets(df, df_test, n_classes,
                            max_number_tokens=512, 
-                           pre_trained_model_name='DeepPavlov/rubert-base-cased',
-                            r=16,
-                            lora_alpha=32,
-                            lora_dropout=0.05):
+                           pre_trained_model_name='DeepPavlov/rubert-base-cased'):
     tokenizer = AutoTokenizer.from_pretrained(pre_trained_model_name, do_lower_case = True)
-    model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
-                                                            problem_type="multi_label_classification",
-                                                           num_labels=n_classes)
-    
-
-    # lora для модели
-    config = LoraConfig(
-        r=r,
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        bias="none",
-        task_type=TaskType.SEQ_CLS
-    )
-    model_peft = get_peft_model(model, config)
 
     
     # Ищем элемнты, c list из target_coded, который встречается только 1 раз
@@ -351,5 +334,25 @@ def prepair_model_datasets(df, df_test, n_classes,
     #Чтобы использовать собственную функцию потерь создаем класс CustomTrainer
 
     return dataset_train_v2, dataset_valid_v2, dataset_test_v2,\
-        loss_fuction_for_multiclass_classification, model_peft 
+        loss_fuction_for_multiclass_classification 
+
+def prepair_model(n_classes,
+                  pre_trained_model_name='DeepPavlov/rubert-base-cased',
+                  r=16,
+                  lora_alpha=32,
+                  lora_dropout=0.05):
+    model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
+                                                               problem_type="multi_label_classification",
+                                                               num_labels=n_classes)
+    # lora для модели
+    config = LoraConfig(
+        r=r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        bias="none",
+        task_type=TaskType.SEQ_CLS
+    )
+    model_peft = get_peft_model(model, config)
+
+    return model_peft
 

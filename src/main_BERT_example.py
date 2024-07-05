@@ -1,5 +1,5 @@
 import os
-from prepare_datasets_BERT import get_grnti1_2_BERT_dataframes, prepair_model_datasets
+from prepare_datasets_BERT import get_grnti1_2_BERT_dataframes, prepair_datasets, prepair_model
 from train_test_BERT import train_save_bert, test_save_results
 from TrainSettings import TrainSettings
 
@@ -25,12 +25,10 @@ for number_of_delteted_values in [11]:
 
 
                                 train_dataset, validation_dataset, test_dataset,\
-                                loss_fuction, model = prepair_model_datasets(df, df_test, n_classes,
+                                loss_fuction = prepair_datasets(df, df_test, n_classes,
                                                         max_number_tokens=max_number_tokens, 
-                                                        pre_trained_model_name=pre_trained_model_name,
-                                                            r=r,
-                                                            lora_alpha=lora_alpha,
-                                                            lora_dropout=lora_dropout)
+                                                        pre_trained_model_name=pre_trained_model_name)
+    
                                 for epoch in [1]:
                                     for batch_size in [8]:
                                         for weight_decay in [1e-6]:
@@ -38,6 +36,9 @@ for number_of_delteted_values in [11]:
                                                 for fp16 in [True]:
                                                     for optim in ["adamw_bnb_8bit"]:
                                                             dir_name = base_name + f"model bert lora {n}\\"
+                                                            model = prepair_model(pre_trained_model_name=pre_trained_model_name,
+                                                                                  r=r, lora_alpha=lora_alpha, 
+                                                                                  lora_dropout=lora_dropout)
                                                             sett = TrainSettings()
 
                                                             sett.settings["number_of_delteted_values"] = number_of_delteted_values
@@ -57,7 +58,7 @@ for number_of_delteted_values in [11]:
                                                             sett.save(path = dir_name)
                                                             n +=1 
                                                             merged_model = train_save_bert(train_dataset, 
-                                                                                        validation_dataset, 
+                                                                                            validation_dataset, 
                                                                                             loss_fuction, 
                                                                                             model,
                                                                                             n_classes,
