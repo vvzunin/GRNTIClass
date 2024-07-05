@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2024-07-05T14:12:12.038Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 YaBrowser/24.6.0.0 Safari/537.36" etag="YZu0y04XNSnQTJYYjyK4" version="24.6.4" type="device" pages="3">
+<mxfile host="app.diagrams.net" modified="2024-07-05T14:15:34.035Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 YaBrowser/24.6.0.0 Safari/537.36" etag="2JMoDTkwFcfdZ0dyQtx7" version="24.6.4" type="device" pages="3">
   <diagram name="Общая архитектура проекта" id="3acRPLGUCLhpH6l8pfd7">
     <mxGraphModel dx="1074" dy="743" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -75,7 +75,7 @@
         <mxCell id="v35Xd5D1EGkSS2JpecIM-14" value="Замена сокращений" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="240" y="584.5" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="v35Xd5D1EGkSS2JpecIM-19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="v35Xd5D1EGkSS2JpecIM-15" target="v35Xd5D1EGkSS2JpecIM-18">
+        <mxCell id="p-Wym7pC-mPhZtnHgsh2-5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="v35Xd5D1EGkSS2JpecIM-15" target="p-Wym7pC-mPhZtnHgsh2-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-15" value="Удаление стоп слов&lt;div&gt;Если задано в settings&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
@@ -85,34 +85,46 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-18" value="Составление словаря по рубрикам" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="780" width="120" height="60" as="geometry" />
+          <mxGeometry x="240" y="980" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="v35Xd5D1EGkSS2JpecIM-20" target="v35Xd5D1EGkSS2JpecIM-23">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-20" value="Замена рубрик на числа в соответствии со словарем" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="880" width="120" height="60" as="geometry" />
+          <mxGeometry x="240" y="1080" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="v35Xd5D1EGkSS2JpecIM-23" target="v35Xd5D1EGkSS2JpecIM-25">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-23" value="Формирование из названия, abstrackt, ключевых слов единого текста" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="980" width="120" height="60" as="geometry" />
+          <mxGeometry x="240" y="1180" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="v35Xd5D1EGkSS2JpecIM-25" target="v35Xd5D1EGkSS2JpecIM-27">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-25" value="Добавление к тексту названий рубрик&lt;div&gt;Если задано в settings&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="1080" width="120" height="60" as="geometry" />
+          <mxGeometry x="240" y="1280" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="v35Xd5D1EGkSS2JpecIM-27" value="dataset_new.csv" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-          <mxGeometry x="240" y="1180" width="120" height="41" as="geometry" />
+          <mxGeometry x="240" y="1380" width="120" height="41" as="geometry" />
         </mxCell>
         <mxCell id="ZP1xI-FBEff_ZeeO84IV-2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="ZP1xI-FBEff_ZeeO84IV-1" target="v35Xd5D1EGkSS2JpecIM-1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="ZP1xI-FBEff_ZeeO84IV-1" value="settings" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="300" width="120" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p-Wym7pC-mPhZtnHgsh2-4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="p-Wym7pC-mPhZtnHgsh2-1" target="p-Wym7pC-mPhZtnHgsh2-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-Wym7pC-mPhZtnHgsh2-1" value="Замена диакритов и latex обозначений" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="780" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p-Wym7pC-mPhZtnHgsh2-3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="p-Wym7pC-mPhZtnHgsh2-2" target="v35Xd5D1EGkSS2JpecIM-18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p-Wym7pC-mPhZtnHgsh2-2" value="работа с формулами LaTeX" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="880" width="120" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
