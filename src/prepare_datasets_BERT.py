@@ -75,10 +75,11 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
     list_of_proper_values_target_2 = []
     list_of_inproper_values_target_2 = []
     print(f"Удаление элементов второго уровня, количство которых меньше {minimal_number_of_elements_RGNTI2}")
-
+    print(df_trunc.head())
     for target_2_val in tqdm(unique_vals):
         needed_taget2 = df_trunc['target_2'].apply(lambda x: [re.findall(f"{target_2_val}.\d+",el)[0] for el 
                                                     in x if re.findall(f"{target_2_val}.\d+",el)])
+        
         concatenated_list_target2 = pd.value_counts(np.concatenate(np.array([el for el
                                                     in needed_taget2.values.tolist() if el], dtype="object")))
         list_of_proper_values_target_2.extend(concatenated_list_target2[concatenated_list_target2 >= minimal_number_of_elements_RGNTI2].\
@@ -107,6 +108,19 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
         grnti_mapping_dict = json.load(code_file) # Загружаем файл с кодами 
     n_classes = len(grnti_mapping_dict)
 
+    #Уровень 2
+    unique_vals_level2 = np.unique(np.concatenate(df_trunc2['target_2'].values))
+    union_of_targets2 = set(unique_vals_level2)
+    coding2 =  range(len(union_of_targets2))
+    dict_Vinit_code_int2 = dict(zip(union_of_targets2, coding2))
+
+    with open("my_grnti2_int.json", "w") as outfile:
+        json.dump(dict_Vinit_code_int2, outfile)
+
+
+    with open('my_grnti2_int.json', "r") as code_file:
+        grnti_mapping_dict2 = json.load(code_file) # Загружаем файл с кодами 
+    n_classes2 = len(grnti_mapping_dict2)
 
     #Кодируем классы тренировочного датасета
     df_trunc_result_multiclass_targets = []
@@ -130,7 +144,29 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
     df_trunc2['target_coded'] = df_trunc_result_multiclass_targets
     df_test_trunc2['target_coded'] = df_test_trunc_result_multiclass_targets
 
+    #Кодируем классы тренировочного датасета level2
+    df_trunc_result_multiclass_targets2 = []
+    for list_el in df_trunc2['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
 
+        df_trunc_result_multiclass_targets2.append(classes_zero)
+
+   #Кодируем классы тестового датасета level2
+    df_test_trunc_result_multiclass_targets2 = []
+    for list_el in df_test_trunc2['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
+
+        df_test_trunc_result_multiclass_targets2.append(classes_zero)
+
+    df_trunc2['target_coded2'] = df_trunc_result_multiclass_targets2
+    df_test_trunc2['target_coded2'] = df_test_trunc_result_multiclass_targets2
+############################
     df_trunc2['text'] = (df_trunc2['title'].apply(lambda x:x+' [SEP] ') 
                      + df_trunc2['ref_txt'])
     df_test_trunc2['text'] = (df_test_trunc2['title'].apply(lambda x:x+' [SEP] ')
@@ -147,7 +183,7 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
 
     print("Доля оставшихся элементов в тренировочном датасете: ", df_trunc2.shape[0] / df.shape[0])
 
-    return df_trunc2, df_test_trunc2, n_classes
+    return df_trunc2, df_test_trunc2, n_classes, n_classes2
 
 def get_input_ids_attention_masks_token_type_labels(df, tokenizer, max_len):
     # Токенизация 

@@ -6,9 +6,13 @@ from TrainSettings import TrainSettings
 n = 0 
 base_name = "results//"
 
-for number_of_delteted_values in [11]:
-    for minimal_number_of_elements_RGNTI2 in [50]:
-        for minimal_number_of_words in [10]:
+for number_of_delteted_values in [1, 5, 11]:
+    print("number_of_delteted_values:", number_of_delteted_values)
+    for minimal_number_of_elements_RGNTI2 in [1, 50]:
+        print("minimal_number_of_elements_RGNTI2:", minimal_number_of_elements_RGNTI2)
+
+        for minimal_number_of_words in [1, 5, 10]:
+            print("minimal_number_of_words:", minimal_number_of_words)
             path_info_before_save = base_name + f"data_info_from_bert {n}\\"
             if not os.path.exists(path_info_before_save):
                 os.makedirs(path_info_before_save)
@@ -18,10 +22,15 @@ for number_of_delteted_values in [11]:
                                            minimal_number_of_words=minimal_number_of_words,
                                            dir_name=path_info_before_save)
             for max_number_tokens in [512]:
+                print("max_number_tokens:", max_number_tokens)
                 for pre_trained_model_name in ['DeepPavlov/rubert-base-cased']:
+                    print("pre_trained_model_name:", pre_trained_model_name)
                     for r in [16]:
+                        print("r:", r)
                         for lora_alpha in [32]:
+                            print("lora_alpha:", lora_alpha)
                             for lora_dropout in [0.05]:
+                                print("lora_dropout:", lora_dropout)
 
 
                                 train_dataset, validation_dataset, test_dataset,\
@@ -29,12 +38,18 @@ for number_of_delteted_values in [11]:
                                                         max_number_tokens=max_number_tokens, 
                                                         pre_trained_model_name=pre_trained_model_name)
     
-                                for epoch in [1]:
+                                for epoch in [5]:
+                                    print("epoch:", epoch)
                                     for batch_size in [8]:
+                                        print("batch_size:", batch_size)
                                         for weight_decay in [1e-6]:
+                                            print("weight_decay", weight_decay)
                                             for warmup_steps in [10]:
+                                                print("warmup_steps:", warmup_steps)
                                                 for fp16 in [True]:
+                                                    print("fp16:", fp16)
                                                     for optim in ["adamw_bnb_8bit"]:
+                                                            print("optim", optim)
                                                             dir_name = base_name + f"model bert lora {n}\\"
                                                             model = prepair_model(pre_trained_model_name=pre_trained_model_name,
                                                                                   r=r, lora_alpha=lora_alpha, 
