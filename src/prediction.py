@@ -15,6 +15,7 @@ from torchmetrics.classification import MultilabelF1Score, MultilabelAccuracy, M
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 import csv
+from torch.utils.data import DataLoader
 
 def prepair_model(n_classes, lora_model_path,
                   pre_trained_model_name='DeepPavlov/rubert-base-cased',
@@ -68,7 +69,7 @@ def prepair_data_level2(df_test, preds):
                 list_elments.append(index) 
         list_GRNTI.append(list_elments)
 
-    print("Доля непрдсказанных классов GRNTI 1 для статей:", 
+    print("Доля непредсказанных классов GRNTI 1 для статей:", 
       sum([not el for el in list_GRNTI])/len(list_GRNTI))
     
 
@@ -88,7 +89,7 @@ def prepair_data_level2(df_test, preds):
             sring_per_element += grnti_mapping_dict_true_names[el] + "; "
         list_thems.append(sring_per_element)
 
-    # df_test = df_test.iloc[:3]
+    # df_test = df_test.iloc[:24]
 
     df_test['text'] = list_thems + df_test['text']#text_with_GRNTI1_names
     return df_test
@@ -122,7 +123,14 @@ def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
 
     return input_ids, attention_masks, token_type_ids
 
-
+def collate_fn(batch):
+    result = {}
+    for el in batch:
+        for key in el.keys():
+            result.setdefault(key, []).append(el[key])
+    for key in result.keys():
+        result[key] = torch.tensor(result[key])
+    return result
 def prepair_dataset(df_test,
                            max_number_tokens=512, 
                            pre_trained_model_name='DeepPavlov/rubert-base-cased'):
@@ -138,7 +146,10 @@ def prepair_dataset(df_test,
     dataset_test = Dataset.from_dict({"input_ids":input_ids_test,  
                                       "attention_mask":attention_masks_test,  
                                       "token_type_ids":token_type_ids_test})
-    return dataset_test
+    
+
+    test_dataloader = DataLoader(dataset_test, batch_size=8, collate_fn=collate_fn)
+    return test_dataloader
 
 
 def make_predictions(model, dataset_test, device, threshold):
@@ -147,25 +158,26 @@ def make_predictions(model, dataset_test, device, threshold):
     y_pred_list = []
     model.to(device)
 
-    count = 0
+    # count = 0
 
     for batch in tqdm(dataset_test):
-            if count == 3:
-                break
-            inputs = torch.tensor([batch['input_ids']]).to(device)
-            mask = torch.tensor([batch['attention_mask']]).to(device)
+            # if count == 3:
+            #     break
+
+            inputs = batch['input_ids'].to(device = device, dtype=torch.long)
+            mask = batch['attention_mask'].to(device = device)
 
             with torch.no_grad():
                 output = model(input_ids = inputs, attention_mask = mask)
             
             # Move logits and labels to CPU
-            logits = output.logits.detach().cpu()#.numpy()
+            logits = output.logits.detach().cpu()
 
-            logits_flatten = (torch.sigmoid(logits).numpy() >= threshold).tolist() #.numpy()#.flatten()
+            logits_flatten = (torch.sigmoid(logits).numpy() >= threshold).tolist()
 
             y_pred_list.extend(logits_flatten)
 
-            count +=1
+            # count +=1
 
     return y_pred_list
 
@@ -188,7 +200,7 @@ def save_rubrics_names(preds, path_to_csv):
                 list_elments.append(index) 
         list_GRNTI.append(list_elments)
 
-    print("Доля непрдсказанных классов GRNTI 2 для статей:", 
+    print("Доля непредсказанных классов GRNTI 2 для статей:", 
       sum([not el for el in list_GRNTI])/len(list_GRNTI))
     
 
