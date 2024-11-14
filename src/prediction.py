@@ -53,10 +53,10 @@ def prepair_data_level2(df_test, preds):
 
     print("Подготовка данных 2 уровень")
 
-    with open('my_grnti1_int.json', "r") as code_file:
+    with open('src\\my_grnti1_int.json', "r") as code_file:
         grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
 
-    with open('GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
+    with open('src\\GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
         grnti_mapping_dict_true_names = json.load(code_file) # Загружаем файл с кодами 
 
 
@@ -184,10 +184,10 @@ def make_predictions(model, dataset_test, device, threshold):
 
 def save_rubrics_names(preds, path_to_csv):
 
-    with open('my_grnti2_int.json', "r") as code_file:
+    with open('src\\my_grnti2_int.json', "r") as code_file:
             grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
 
-    with open('GRNTI_2_ru.json', "r", encoding='utf-8') as code_file:
+    with open('src\\GRNTI_2_ru.json', "r", encoding='utf-8') as code_file:
         grnti_mapping_dict_true_names = json.load(code_file) # Загружаем файл с кодами 
 
 
