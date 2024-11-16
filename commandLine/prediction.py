@@ -1,26 +1,16 @@
-import re
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from tqdm.notebook import tqdm as tqdm2
 import json
 import torch
-from peft import TaskType, LoraConfig, get_peft_model
 from transformers import AutoTokenizer
 from transformers import AutoModelForSequenceClassification
-from collections import Counter
-from sklearn.model_selection import train_test_split
-from torchmetrics.classification import MultilabelF1Score, MultilabelAccuracy, MultilabelAUROC
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
-import csv
 from torch.utils.data import DataLoader
 
 def prepair_model(n_classes, lora_model_path,
-                  pre_trained_model_name='DeepPavlov/rubert-base-cased',
-                  ):
-    print("Подготовка модели")
+                  pre_trained_model_name='DeepPavlov/rubert-base-cased'):
     model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
                                                                problem_type="multi_label_classification",
                                                                num_labels=n_classes)
@@ -33,30 +23,29 @@ def prepair_model(n_classes, lora_model_path,
     return model
 
 
-def prepair_data_level1(file_path):
-    print("Подготовка данных 1 уровень")
+def prepair_data_level1(file_path, format="multidoc"):
+    if (format == "multidoc"):
+        df_test = pd.read_csv(file_path, sep='\t', encoding='cp1251', on_bad_lines='skip', index_col="id")    
+        df_test['text'] = (df_test['title'].apply(lambda x:x+' ') + df_test['body'])
+        df_test['text'] = df_test['text'].apply(lambda x:str(x)+ ' ') + df_test['keywords']        
+        df_test = df_test.dropna(subset=['text'], axis=0)
+        df_test = df_test.drop(columns=['title', 'keywords', 'body'])
+    elif (format == "plain"):
+        text = open(file_path, "r", encoding="cp1251").readlines()
+        text = "".join(text)
+        text = text.replace("\n", " ")
+        df_test = pd.DataFrame({"text": text}, index=[0])
 
-    df_test = pd.read_csv(file_path, sep='\t', encoding='cp1251', on_bad_lines='skip')
-  
-    df_test['text'] = (df_test['title'].apply(lambda x:x+' [SEP] ')
-                                                + df_test['ref_txt'])
-
-    df_test['text'] = df_test['text'].apply(lambda x:str(x)+
-                                                          ' [SEP] ') + df_test['kw_list']
-    
-    df_test = df_test.dropna(subset=['text'], axis=0)
-
-
-    return df_test#, n_classes1
+    return df_test
 
 def prepair_data_level2(df_test, preds):
 
     print("Подготовка данных 2 уровень")
 
-    with open('src\\my_grnti1_int.json', "r") as code_file:
+    with open('my_grnti1_int.json', "r") as code_file:
         grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
 
-    with open('src\\GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
+    with open('GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
         grnti_mapping_dict_true_names = json.load(code_file) # Загружаем файл с кодами 
 
 
@@ -181,13 +170,12 @@ def make_predictions(model, dataset_test, device, threshold):
 
     return y_pred_list
 
-
 def save_rubrics_names(preds, path_to_csv):
 
-    with open('src\\my_grnti2_int.json', "r") as code_file:
-            grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
+    with open('my_grnti2_int.json', "r") as code_file:
+        grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
 
-    with open('src\\GRNTI_2_ru.json', "r", encoding='utf-8') as code_file:
+    with open('GRNTI_2_ru.json', "r", encoding='utf-8') as code_file:
         grnti_mapping_dict_true_names = json.load(code_file) # Загружаем файл с кодами 
 
 
@@ -217,7 +205,7 @@ def save_rubrics_names(preds, path_to_csv):
     for list_true in list_true_numbers_GRNTI:
         sring_per_element = ""
         for el in list_true:
-            sring_per_element += grnti_mapping_dict_true_names[el] + "; "
+            sring_per_element += el + " " + grnti_mapping_dict_true_names[el] + "; "
         list_thems.append(sring_per_element)
 
     np.savetxt(path_to_csv,
