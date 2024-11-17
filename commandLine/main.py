@@ -145,13 +145,10 @@ if __name__ == "__main__":
   model1 = None if models ["lora"][1] == "" else prepair_model(n_classes=31, lora_model_path=models["lora"][1])
   model2 = None
   model3 = None
-  print("-1-")
   if ((args.level == "RGNTI2") or (args.level == "RGNTI3")):
     model2 = None if models ["lora"][2] == "" else prepair_model(n_classes=246, lora_model_path=models["lora"][2])
-    print("-2-")
   if (args.level == "RGNTI3"):
     model3 = None if models ["lora"][3] == "" else prepair_model(n_classes=0, lora_model_path=models["lora"][3])
-    print("-3-")
   
   if ((model1 is None) or
       ((model2 is None) and ((args.level == "RGNTI2") or (args.level == "RGNTI3"))) or
@@ -170,7 +167,6 @@ if __name__ == "__main__":
   elif (lang == "en"):
     print("{} Models loaded.".format(modelsTime.strftime(datetimeFormatOutput)))
 
-
   df_test = prepair_data_level1(args.inFile, format=args.format)
   dataset_test = prepair_dataset(df_test)
 
@@ -184,12 +180,10 @@ if __name__ == "__main__":
   predictions_level1 = make_predictions(model1, dataset_test, device=device, threshold=0.5)
   save_rubrics_names(predictions_level1, path_to_csv = "result1.csv")
 
-
   del model1
   torch.cuda.empty_cache()
   print("Part for second level")
   
-
   df_test2 = prepair_data_level2(df_test, predictions_level1)
 
   dataset_test2 = prepair_dataset(df_test2)

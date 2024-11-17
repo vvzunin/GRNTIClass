@@ -24,7 +24,6 @@ def prepair_model(
 
   return model
 
-
 def prepair_data_level1(file_path, format="multidoc"):
   if format == "multidoc":
     df_test = pd.read_csv(
