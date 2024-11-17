@@ -137,7 +137,7 @@ if __name__ == "__main__":
       help=arguments[i]["help"][lang],
       metavar=arguments[i]["metavar"],
       dest=arguments[i]["dest"]
-      )
+    )
     
   args = parser.parse_args()
   torch.cuda.empty_cache()
