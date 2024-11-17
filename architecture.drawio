@@ -191,7 +191,7 @@
         <mxCell id="RPRRbdSUbolqChjg2221-11" value="Удаление части текстов в рубриках с большим их количеством" style="rounded=1;whiteSpace=wrap;html=1;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="240" y="480" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-13" value="Лемматизация" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-13" value="Лемматизация" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="400" y="80" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="RPRRbdSUbolqChjg2221-14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" parent="RPRRbdSUbolqChjg2221-1" source="RPRRbdSUbolqChjg2221-13" target="RPRRbdSUbolqChjg2221-17" edge="1">
@@ -202,16 +202,16 @@
         <mxCell id="RPRRbdSUbolqChjg2221-16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="RPRRbdSUbolqChjg2221-1" source="RPRRbdSUbolqChjg2221-17" target="RPRRbdSUbolqChjg2221-29" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-17" value="Удаление стоп слов" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-17" value="Удаление стоп слов" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="400" y="180" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="RPRRbdSUbolqChjg2221-24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="RPRRbdSUbolqChjg2221-1" source="RPRRbdSUbolqChjg2221-25" target="RPRRbdSUbolqChjg2221-26" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-25" value="Добавление к тексту названий рубрик" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-25" value="Добавление к тексту названий рубрик" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="560" y="80" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-26" value="dataset_new.csv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-26" value="dataset_new.csv" style="ellipse;whiteSpace=wrap;html=1;fillColor=#CCCCCC;strokeColor=#666666;fontColor=#333333;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="560" y="180" width="120" height="30" as="geometry" />
         </mxCell>
         <mxCell id="RPRRbdSUbolqChjg2221-27" value="settings.json" style="ellipse;whiteSpace=wrap;html=1;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
@@ -220,7 +220,7 @@
         <mxCell id="RPRRbdSUbolqChjg2221-28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="RPRRbdSUbolqChjg2221-1" source="RPRRbdSUbolqChjg2221-29" target="RPRRbdSUbolqChjg2221-31" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-29" value="Замена диакритов и LaTeX обозначений" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-29" value="Замена диакритов и LaTeX обозначений" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="400" y="280" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="RPRRbdSUbolqChjg2221-30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="RPRRbdSUbolqChjg2221-1" source="ZIkUA87CfKIXcu9Gf7iv-0" edge="1">
@@ -236,10 +236,10 @@
         <mxCell id="ZIkUA87CfKIXcu9Gf7iv-1" style="edgeStyle=none;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=12;startSize=8;endSize=8;" parent="RPRRbdSUbolqChjg2221-1" source="RPRRbdSUbolqChjg2221-31" target="ZIkUA87CfKIXcu9Gf7iv-0" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="RPRRbdSUbolqChjg2221-31" value="Работа с формулами LaTeX" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="RPRRbdSUbolqChjg2221-31" value="Работа с формулами LaTeX" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="400" y="380" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="ZIkUA87CfKIXcu9Gf7iv-0" value="Формирование из названия, введений и ключевых слов единого текста" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
+        <mxCell id="ZIkUA87CfKIXcu9Gf7iv-0" value="Формирование из названия, введений и ключевых слов единого текста" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#CCCCCC;fontColor=#333333;strokeColor=#666666;" parent="RPRRbdSUbolqChjg2221-1" vertex="1">
           <mxGeometry x="400" y="480" width="120" height="60" as="geometry" />
         </mxCell>
       </root>
