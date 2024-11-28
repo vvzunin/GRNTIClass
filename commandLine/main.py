@@ -43,8 +43,8 @@ mesages = {
 
 models = {
   "lora": {
-    1: "models\\bert\\expriment_save_model",
-    2: "models\\bert\\expriment_save_model2",
+    1: "models\\bert2\\bert_peft_level1",
+    2: "models\\bert2\\bert_peft_level2_with_labels",
     3: ""
   }
 }
@@ -196,11 +196,7 @@ if __name__ == "__main__":
 
   printInfo(mesages["libs"], datetime.datetime.now().strftime(datetimeFormatOutput))
 
-  import os
-  dir_path = os.path.dirname(os.path.realpath(__file__))
-  print(dir_path)
-
-  model1 = None if models[args.modelType][1] == "" else prepair_model(n_classes=31, lora_model_path=models[args.modelType][1])
+  model1 = None if models[args.modelType][1] == "" else prepair_model(n_classes=36, lora_model_path=models[args.modelType][1])
   model2 = None
   model3 = None
   if ((args.level == "RGNTI2") or (args.level == "RGNTI3")):
