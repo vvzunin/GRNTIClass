@@ -1,0 +1,22 @@
+{
+    "AI": "Artificial Intelligence",
+    "ML": "Machine Learning",
+    "CNN": "Convolutional Neural Network",
+    "RNN": "Recurrent Neural Network",
+    "GAN": "Generative Adversarial Network",
+    "VAE": "Variational Autoencoder",
+    "RL": "Reinforcement Learning",
+    "ANN": "Artificial Neural Network",
+    "SVM": "Support Vector Machine",
+    "NLP": "Natural Language Processing",
+    "GPU": "Graphics Processing Unit",
+    "DNN": "Deep Neural Network",
+    "LSTM": "Long Short-Term Memory",
+    "PCA": "Principal Component Analysis",
+    "API": "Application Programming Interface",
+    "IoT": "Internet of Things",
+    "HCI": "Human-Computer Interaction",
+    "TTS": "Text-to-Speech",
+    "ASR": "Automatic Speech Recognition",
+    "OCR": "Optical Character Recognition"
+}
