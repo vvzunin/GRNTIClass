@@ -2,7 +2,52 @@ description = {
   "ru": "Автоматизированный классификатор текстов по кодам ГРНТИ.",
   "en": "Automation text classifier for GRNTI codes."
 }
+mesages = {
+  "start": {
+    "ru": "%s Программа запущена.",
+    "en": "%s Programm started."
+  },
+  "finish": {
+    "ru": "%s Программа завершена.",
+    "en": "%s Programm finished."
+  },
+  "libs": {
+    "ru": "%s Библиотеки импортированы.",
+    "en": "%s Libraries imported."
+  },
+  "modelError": {
+    "ru": "%s Одна из необходимых моделей для вычислений не загружена или не найдена.",
+    "en": "%s One of the models required for calculations was not loaded or not found."
+  },
+  "modelLoaded": {
+    "ru": "%s Модели загружены.",
+    "en": "%s Models loaded."
+  },
+  "device": {
+    "ru": "%s Устройство выполнения: %s",
+    "en": "%s Device: %s"
+  },
+  "startPredict": {
+    "ru": "%s Начинается предсказание результатов",
+    "en": "%s The prediction of the results begins"
+  },
+  "notComplete": {
+    "ru": "%s Данный функционал еще не реализован",
+    "en": "%s This functionality is still"
+  },
+  "badFlag": {
+    "ru": "%s Флаг %s не поддерживает значение %s",
+    "en": "%s Flag %s is not supported value %s"
+  }
+}
 
+models = {
+  "lora": {
+    1: "models\\bert\\expriment_save_model",
+    2: "models\\bert\\expriment_save_model2",
+    3: ""
+  }
+}
 arguments = {
   "i": {
     "name": "-i",
@@ -95,37 +140,29 @@ arguments = {
     "metavar": "normalisation",
     "dest": "normalisation"
   },
+  "m": {
+    "name": "-m",
+    "default": list(models.keys())[0],
+    "type": str,
+    "choices": list(models.keys()),
+    "required": False,
+    "help": {
+      "ru": "Модель для классификации (по-умолчанию: %(default)s)\n",
+      "en": "Model for classification (default: %(default)s)\n"
+    },
+    "metavar": "modelType",
+    "dest": "modelType"
+  },
 }
 
 lang = "ru"
 datetimeFormatOutput = "%d.%m.%Y %H:%M:%S.%f"
-models = {
-  "lora": {
-    1: "..\\models\\bert\\expriment_save_model",
-    2: "..\\models\\bert\\expriment_save_model2",
-    3: ""
-  }
-}
 
-if __name__ == "__main__":
-  import datetime
-  start = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Программа запущена.".format(start.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Programm started.".format(start.strftime(datetimeFormatOutput)))
+def printInfo(formatString, args = []):
+  print(formatString[lang] % args)
 
+def parseArgs():
   import argparse
-  from prediction import prepair_model, prepair_data_level1, prepair_data_level2,\
-  prepair_dataset, make_predictions, save_rubrics_names
-  import torch
-
-  libs = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Библиотеки импортированы.".format(libs.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Libraries imported.".format(libs.strftime(datetimeFormatOutput)))
-
   parser = argparse.ArgumentParser(description=description[lang])
   for i in arguments:
     parser.add_argument(
@@ -138,62 +175,76 @@ if __name__ == "__main__":
       metavar=arguments[i]["metavar"],
       dest=arguments[i]["dest"]
     )
-    
-  args = parser.parse_args()
+  return parser.parse_args()
+
+def dataSelection(preds, threshold):
+  return preds[preds > threshold]
+
+if __name__ == "__main__":
+  import datetime
+  start = datetime.datetime.now()
+  printInfo(mesages["start"], start.strftime(datetimeFormatOutput))
+
+  args = parseArgs()
+
+  # Импортирование библиотек
+  from prediction import prepair_model, prepair_data_level1, prepair_data_level2,\
+  prepair_dataset, make_predictions, save_rubrics, toRubrics#save_rubrics_names
+  from tqdm import tqdm
+  import torch
   torch.cuda.empty_cache()
 
-  model1 = None if models ["lora"][1] == "" else prepair_model(n_classes=31, lora_model_path=models["lora"][1])
+  printInfo(mesages["libs"], datetime.datetime.now().strftime(datetimeFormatOutput))
+
+  import os
+  dir_path = os.path.dirname(os.path.realpath(__file__))
+  print(dir_path)
+
+  model1 = None if models[args.modelType][1] == "" else prepair_model(n_classes=31, lora_model_path=models[args.modelType][1])
   model2 = None
   model3 = None
   if ((args.level == "RGNTI2") or (args.level == "RGNTI3")):
-    model2 = None if models ["lora"][2] == "" else prepair_model(n_classes=246, lora_model_path=models["lora"][2])
+    model2 = None if models [args.modelType][2] == "" else prepair_model(n_classes=246, lora_model_path=models[args.modelType][2])
   if (args.level == "RGNTI3"):
-    model3 = None if models ["lora"][3] == "" else prepair_model(n_classes=0, lora_model_path=models["lora"][3])
+    model3 = None if models [args.modelType][3] == "" else prepair_model(n_classes=0, lora_model_path=models[args.modelType][3])
   
   if ((model1 is None) or
       ((model2 is None) and ((args.level == "RGNTI2") or (args.level == "RGNTI3"))) or
       ((model3 is None) and (args.level == "RGNTI3"))):
-    if (lang == "ru"):
-      print("{} Одна из необходимых моделей для вычислений не загружена или не найдена."
-            .format(libs.strftime(datetimeFormatOutput)))
-    elif (lang == "en"):
-      print("{} One of the models required for calculations was not loaded or not found."
-            .format(libs.strftime(datetimeFormatOutput)))
+    printInfo(mesages["modelError"], datetime.datetime.now().strftime(datetimeFormatOutput))
     exit()
 
-  modelsTime = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Модели загружены.".format(modelsTime.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Models loaded.".format(modelsTime.strftime(datetimeFormatOutput)))
-
+  printInfo(mesages["startPredict"], datetime.datetime.now().strftime(datetimeFormatOutput))
   df_test = prepair_data_level1(args.inFile, format=args.format)
-  dataset_test = prepair_dataset(df_test)
+  device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+  printInfo(mesages["device"], (datetime.datetime.now().strftime(datetimeFormatOutput), device))
 
-  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-  deviceTime = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Устройство выполнения: {}".format(deviceTime.strftime(datetimeFormatOutput), device))
-  elif (lang == "en"):
-    print("{} Device: {}".format(deviceTime.strftime(datetimeFormatOutput), device))
+  if (args.normalisation != "not"):
+    printInfo(mesages["badFlag"], (datetime.datetime.now().strftime(datetimeFormatOutput), '-n', args.normalisation))
+    exit()
 
-  predictions_level1 = make_predictions(model1, dataset_test, device=device, threshold=0.5)
-  save_rubrics_names(predictions_level1, path_to_csv = "result1.csv")
+  for i in tqdm(range(df_test.shape[0])):
+    dataset_loader = prepair_dataset(df_test.iloc[[i]])  
 
-  del model1
-  torch.cuda.empty_cache()
-  print("Part for second level")
+    predictions_level1 = make_predictions(model1, dataset_loader, device=device)
+    if (args.level == "RGNTI1"):
+      predictions_level1 = toRubrics(predictions_level1, 1, args.threshold)
+      save_rubrics(df_test, predictions_level1, args, i==0)
+    else:
+      df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, args.threshold)
+      dataset_loader2 = prepair_dataset(df_test2)
+      predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
+      if (args.level == "RGNTI2"):
+        predictions_level2 = toRubrics(predictions_level2, 2, args.threshold)
+        save_rubrics(df_test2, predictions_level2, args, i==0)
+      else:
+        printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
+        predictions_level2 = toRubrics(predictions_level2, 2, args.threshold)
+        save_rubrics(df_test2, predictions_level2, args, i==0)
   
-  df_test2 = prepair_data_level2(df_test, predictions_level1)
+  del model1
+  del model2
+  del model3
 
-  dataset_test2 = prepair_dataset(df_test2)
-
-  predictions_level2 = make_predictions(model2, dataset_test2, device=device, threshold=0.5)
-
-  save_rubrics_names(predictions_level2, path_to_csv = "result2.csv")
-
-  finish = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Программа завершена.".format(finish.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Programm finished.".format(finish.strftime(datetimeFormatOutput)))
+  printInfo(mesages["finish"], datetime.datetime.now().strftime(datetimeFormatOutput))
+  
