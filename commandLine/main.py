@@ -161,21 +161,15 @@ datetimeFormatOutput = "%d.%m.%Y %H:%M:%S.%f"
 def printInfo(formatString, args = []):
   print(formatString[lang] % args)
 
-def parseArgs():
-  import argparse
-  parser = argparse.ArgumentParser(description=description[lang])
-  for i in arguments:
-    parser.add_argument(
-      arguments[i]["name"],
-      default=arguments[i]["default"],
-      type=arguments[i]["type"],
-      choices=arguments[i]["choices"],
-      required=arguments[i]["required"],
-      help=arguments[i]["help"][lang],
-      metavar=arguments[i]["metavar"],
-      dest=arguments[i]["dest"]
-    )
-  return parser.parse_args()
+def get_user_inputs():
+    user_args = {}
+    for arg_key, arg_info in arguments.items():
+        prompt = f"{arg_info['help'][lang]} (по умолчанию: {arg_info['default']}): "
+        user_input = input(prompt)
+        if user_input == "":
+            user_input = arg_info['default']
+        user_args[arg_info['dest']] = arg_info['type'](user_input)
+    return user_args
 
 def dataSelection(preds, threshold):
   return preds[preds > threshold]
@@ -185,62 +179,61 @@ if __name__ == "__main__":
   start = datetime.datetime.now()
   printInfo(mesages["start"], start.strftime(datetimeFormatOutput))
 
-  args = parseArgs()
+  # Запрашиваем параметры у пользователя
+  user_args = get_user_inputs()
 
-  # Импортирование библиотек
-  from prediction import prepair_model, prepair_data_level1, prepair_data_level2,\
-  prepair_dataset, make_predictions, save_rubrics, toRubrics#save_rubrics_names
+  from prediction import prepair_model, prepair_data_level1, prepair_data_level2, \
+      prepair_dataset, make_predictions, save_rubrics, toRubrics
   from tqdm import tqdm
   import torch
   torch.cuda.empty_cache()
 
   printInfo(mesages["libs"], datetime.datetime.now().strftime(datetimeFormatOutput))
 
-  model1 = None if models[args.modelType][1] == "" else prepair_model(n_classes=36, lora_model_path=models[args.modelType][1])
+  model1 = None if models[user_args['modelType']][1] == "" else prepair_model(n_classes=36, lora_model_path=models[user_args['modelType']][1])
   model2 = None
   model3 = None
-  if ((args.level == "RGNTI2") or (args.level == "RGNTI3")):
-    model2 = None if models [args.modelType][2] == "" else prepair_model(n_classes=246, lora_model_path=models[args.modelType][2])
-  if (args.level == "RGNTI3"):
-    model3 = None if models [args.modelType][3] == "" else prepair_model(n_classes=0, lora_model_path=models[args.modelType][3])
-  
+  if ((user_args['level'] == "RGNTI2") or (user_args['level'] == "RGNTI3")):
+      model2 = None if models[user_args['modelType']][2] == "" else prepair_model(n_classes=246, lora_model_path=models[user_args['modelType']][2])
+  if (user_args['level'] == "RGNTI3"):
+      model3 = None if models[user_args['modelType']][3] == "" else prepair_model(n_classes=0, lora_model_path=models[user_args['modelType']][3])
+
   if ((model1 is None) or
-      ((model2 is None) and ((args.level == "RGNTI2") or (args.level == "RGNTI3"))) or
-      ((model3 is None) and (args.level == "RGNTI3"))):
-    printInfo(mesages["modelError"], datetime.datetime.now().strftime(datetimeFormatOutput))
-    exit()
+      ((model2 is None) and ((user_args['level'] == "RGNTI2") or (user_args['level'] == "RGNTI3"))) or
+      ((model3 is None) and (user_args['level'] == "RGNTI3"))):
+      printInfo(mesages["modelError"], datetime.datetime.now().strftime(datetimeFormatOutput))
+      exit()
 
   printInfo(mesages["startPredict"], datetime.datetime.now().strftime(datetimeFormatOutput))
-  df_test = prepair_data_level1(args.inFile, format=args.format)
+  df_test = prepair_data_level1(user_args['inFile'], format=user_args['format'])
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
   printInfo(mesages["device"], (datetime.datetime.now().strftime(datetimeFormatOutput), device))
 
-  if (args.normalisation != "not"):
-    printInfo(mesages["badFlag"], (datetime.datetime.now().strftime(datetimeFormatOutput), '-n', args.normalisation))
-    exit()
+  if (user_args['normalisation'] != "not"):
+      printInfo(mesages["badFlag"], (datetime.datetime.now().strftime(datetimeFormatOutput), '-n', user_args['normalisation']))
+      exit()
 
   for i in tqdm(range(df_test.shape[0])):
-    dataset_loader = prepair_dataset(df_test.iloc[[i]])  
+      dataset_loader = prepair_dataset(df_test.iloc[[i]])
 
-    predictions_level1 = make_predictions(model1, dataset_loader, device=device)
-    if (args.level == "RGNTI1"):
-      predictions_level1 = toRubrics(predictions_level1, 1, args.threshold)
-      save_rubrics(df_test, predictions_level1, args, i==0)
-    else:
-      df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, args.threshold)
-      dataset_loader2 = prepair_dataset(df_test2)
-      predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
-      if (args.level == "RGNTI2"):
-        predictions_level2 = toRubrics(predictions_level2, 2, args.threshold)
-        save_rubrics(df_test2, predictions_level2, args, i==0)
+      predictions_level1 = make_predictions(model1, dataset_loader, device=device)
+      if (user_args['level'] == "RGNTI1"):
+          predictions_level1 = toRubrics(predictions_level1, 1, user_args['threshold'])
+          save_rubrics(df_test, predictions_level1, user_args, i == 0)
       else:
-        printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
-        predictions_level2 = toRubrics(predictions_level2, 2, args.threshold)
-        save_rubrics(df_test2, predictions_level2, args, i==0)
-  
+          df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, user_args['threshold'])
+          dataset_loader2 = prepair_dataset(df_test2)
+          predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
+          if (user_args['level'] == "RGNTI2"):
+              predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
+              save_rubrics(df_test2, predictions_level2, user_args, i == 0)
+          else:
+              printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
+              predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
+              save_rubrics(df_test2, predictions_level2, user_args, i == 0)
+
   del model1
   del model2
   del model3
 
   printInfo(mesages["finish"], datetime.datetime.now().strftime(datetimeFormatOutput))
-  
