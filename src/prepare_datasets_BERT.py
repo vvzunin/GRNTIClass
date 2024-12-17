@@ -22,8 +22,7 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
                                  dir_name=None):
     df = pd.read_csv(file_path + "\\train_ru.csv", sep='\t', encoding='cp1251')
     df = df.loc[df['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])] # Пропускаем строки без класса
-    df_test = pd.read_csv(file_path + "\\test_ru.csv", sep='\t', encoding='cp1251',
-                        error_bad_lines=False)
+    df_test = pd.read_csv(file_path + "\\test_ru.csv", sep='\t', encoding='cp1251', on_bad_lines='skip')
     df_test = df_test.loc[df_test['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])]
     df['target'] = df['RGNTI'].apply(lambda x:
                                     list(set([re.findall("\d+",el)[0]
@@ -380,6 +379,8 @@ def prepair_model(n_classes,
     model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
                                                                problem_type="multi_label_classification",
                                                                num_labels=n_classes)
+    for param in model.parameters():
+        param.requires_grad = False
     # lora для модели
     config = LoraConfig(
         r=r,

@@ -16,6 +16,8 @@ from datasets import Dataset
 from peft import PeftConfig, PeftModel
 import csv
 from torch.utils.data import DataLoader
+import time
+import gc
 
 def prepair_model(n_classes, lora_model_path,
                   pre_trained_model_name='DeepPavlov/rubert-base-cased',
@@ -23,12 +25,24 @@ def prepair_model(n_classes, lora_model_path,
     print("Подготовка модели")
     model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
                                                                problem_type="multi_label_classification",
-                                                               num_labels=n_classes)
+                                                               num_labels=n_classes,
+                                                               torch_dtype=torch.float16)
+
+
     for param in model.parameters():
         param.requires_grad = False
-    PeftConfig.from_pretrained(lora_model_path)
-    model = PeftModel.from_pretrained(model, lora_model_path, 
-                                    torch_dtype=torch.float16)
+        
+    peft_config = PeftConfig.from_pretrained(lora_model_path)
+    peft_config.init_lora_weights = False
+
+    model.add_adapter(peft_config)
+    model.enable_adapters()
+
+        
+    # PeftConfig.from_pretrained(lora_model_path)
+    
+    # model = PeftModel.from_pretrained(model, lora_model_path, 
+    #                                 torch_dtype=torch.float16)
 
     return model
 
@@ -49,14 +63,16 @@ def prepair_data_level1(file_path):
 
     return df_test#, n_classes1
 
-def prepair_data_level2(df_test, preds):
+def prepair_data_level2(df_test, preds, 
+                        path_to_grnti_model_codes="", 
+                        path_to_grnti_names=""):
 
     print("Подготовка данных 2 уровень")
 
-    with open('my_grnti1_int.json', "r") as code_file:
+    with open(path_to_grnti_model_codes+'my_grnti1_int.json', "r") as code_file:
         grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
 
-    with open('GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
+    with open(path_to_grnti_names + 'GRNTI_1_ru.json', "r", encoding='utf-8') as code_file:
         grnti_mapping_dict_true_names = json.load(code_file) # Загружаем файл с кодами 
 
 
@@ -98,7 +114,7 @@ def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
     # Токенизация 
     input_ids = []
     attention_masks = []
-    token_type_ids =[]
+    token_type_ids = []
     # Для каждого тектса...
     for sent in tqdm(df['text']):#text_with_GRNTI1_names
         encoded_dict = tokenizer.encode_plus(
@@ -124,18 +140,20 @@ def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
     return input_ids, attention_masks, token_type_ids
 
 def collate_fn(batch):
-    result = {}
-    for el in batch:
-        for key in el.keys():
-            result.setdefault(key, []).append(el[key])
-    for key in result.keys():
-        result[key] = torch.tensor(result[key])
-    return result
+    ips = [torch.tensor(item['input_ids']) for item in batch]
+    ttypes = [torch.tensor(item['token_type_ids']) for item in batch]
+    attn = [torch.tensor(item['attention_mask']) for item in batch]
+
+    return {
+           'token_type_ids': torch.stack(ttypes),
+           'input_ids': torch.stack(ips),
+           'attention_mask' : torch.stack(attn)
+            }
 def prepair_dataset(df_test,
                            max_number_tokens=512, 
                            pre_trained_model_name='DeepPavlov/rubert-base-cased'):
     
-    tokenizer = AutoTokenizer.from_pretrained(pre_trained_model_name, do_lower_case = True) 
+    tokenizer = AutoTokenizer.from_pretrained(pre_trained_model_name, do_lower_case = True, use_fast=True) 
 
 
     print("Подготовка тестового датасета:")
@@ -148,38 +166,57 @@ def prepair_dataset(df_test,
                                       "token_type_ids":token_type_ids_test})
     
 
-    test_dataloader = DataLoader(dataset_test, batch_size=8, collate_fn=collate_fn)
+    test_dataloader = DataLoader(dataset_test, batch_size=8, collate_fn=collate_fn, num_workers=4)
     return test_dataloader
 
 
-def make_predictions(model, dataset_test, device, threshold):
+def make_predictions(model, dataset_test, device, threshold, early_break_iteration_number = None):
     print("Предсказние модели")
     model.eval()
-    y_pred_list = []
-    model.to(device)
-
+    # y_pred_list = []
+    y_pred_list_no_threshold = []
     # count = 0
+    # tic = time.process_time()
 
-    for batch in tqdm(dataset_test):
+    for i, batch in enumerate(tqdm(dataset_test)):
             # if count == 3:
             #     break
 
             inputs = batch['input_ids'].to(device = device, dtype=torch.long)
-            mask = batch['attention_mask'].to(device = device)
+            mask = batch['attention_mask'].to(device = device, dtype=torch.long)# может не надо
+            token_type_ids = batch['token_type_ids'].to(device = device, dtype=torch.long)
+
 
             with torch.no_grad():
-                output = model(input_ids = inputs, attention_mask = mask)
+                output = model(input_ids = inputs, attention_mask = mask, token_type_ids = token_type_ids)
             
             # Move logits and labels to CPU
             logits = output.logits.detach().cpu()
+            # del output, inputs, mask, token_type_ids
 
-            logits_flatten = (torch.sigmoid(logits).numpy() >= threshold).tolist()
 
-            y_pred_list.extend(logits_flatten)
 
-            # count +=1
+            y_pred_no_threshold = logits.numpy()#torch.sigmoid(logits).numpy()
+            # logits_flatten = (y_pred_no_threshold>= threshold).tolist()
 
-    return y_pred_list
+
+            # y_pred_list.extend(logits_flatten)
+            y_pred_list_no_threshold.append(y_pred_no_threshold)
+            # if i % 10 == 9:
+            #     torch.cuda.synchronize()
+            #     toc = time.process_time()
+            #     print('Iter. %2d to %2d: Mean time: %.3f' % (i-9, i+1, (toc - tic) / 10.) )
+            #     torch.cuda.synchronize()
+            #     tic = time.process_time()
+            # if i % 150:           
+            #     # gc.collect()
+            #     torch.cuda.empty_cache()
+            if early_break_iteration_number and early_break_iteration_number == i + 1:
+                break
+                
+        
+
+    return np.vstack(y_pred_list_no_threshold) # y_pred_list, 
 
 
 def save_rubrics_names(preds, path_to_csv):

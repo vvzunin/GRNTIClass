@@ -85,10 +85,10 @@ def make_predictions(model, dataset_test, device):
                 output = model(input_ids = inputs, attention_mask = mask, labels=y_test)
             
             # Move logits and labels to CPU
-            logits = output.logits.detach().cpu()#.numpy()
+            logits = output.logits#.detach().cpu()#.numpy()
 
 
-            logits_flatten = torch.sigmoid(logits).numpy()#.flatten()
+            logits_flatten = torch.sigmoid(logits)#.numpy()#.flatten()
 
             y_pred_list.extend(logits_flatten)
 
