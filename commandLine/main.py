@@ -1,6 +1,11 @@
+prog = {
+  'name': 'GRNTIClass',
+  'version': '1.1.0'
+}
+
 description = {
-  "ru": "Автоматизированный классификатор текстов по кодам ГРНТИ.",
-  "en": "Automation text classifier for GRNTI codes."
+  "ru": "Автоматизированный классификатор текстов по кодам ГРНТИ. {} {}".format(prog['name'], prog['version']),
+  "en": "Automation text classifier for GRNTI codes. {} {}".format(prog['name'], prog['version']),
 }
 mesages = {
   "start": {
@@ -147,11 +152,24 @@ arguments = {
     "choices": list(models.keys()),
     "required": False,
     "help": {
-      "ru": "Модель для классификации (по-умолчанию: %(default)s)\n",
-      "en": "Model for classification (default: %(default)s)\n"
+      "ru": "Модель для классификации (по-умолчанию: %(default)s)",
+      "en": "Model for classification (default: %(default)s)"
     },
     "metavar": "modelType",
     "dest": "modelType"
+  },
+  "d": {
+    "name": "-d",
+    "default": False,
+    "type": int,
+    "choices": None,
+    "required": False,
+    "help": {
+      "ru": "Использованием диалогового взаимодействия с программой",
+      "en": "Using dialogue interaction with the program"
+    },
+    "metavar": "dialogue",
+    "dest": "dialogue"
   },
 }
 
@@ -163,13 +181,37 @@ def printInfo(formatString, args = []):
 
 def get_user_inputs():
     user_args = {}
-    for arg_key, arg_info in arguments.items():
-        prompt = f"{arg_info['help'][lang]} (по умолчанию: {arg_info['default']}): "
+    args = arguments.copy()
+    del args['d']
+    for arg_key, arg_info in args.items():
+        prompt = (f"{arg_info['help'][lang]}: ") % {'default': arg_info['default']}
         user_input = input(prompt)
         if user_input == "":
             user_input = arg_info['default']
         user_args[arg_info['dest']] = arg_info['type'](user_input)
     return user_args
+
+def parseArgs():
+  import argparse
+  parser = argparse.ArgumentParser(prog=prog['name'], description=description[lang])
+  parser.add_argument('--version', action='version', version='%(prog)s {}'.format(prog['version']))
+  for i in arguments:
+    parser.add_argument(
+      arguments[i]["name"],
+      default=arguments[i]["default"],
+      type=arguments[i]["type"],
+      choices=arguments[i]["choices"],
+      required=arguments[i]["required"],
+      help=arguments[i]["help"][lang],
+      metavar=arguments[i]["metavar"],
+      dest=arguments[i]["dest"],
+    )
+  import sys
+  if arguments["d"]["name"] in sys.argv:
+    args = get_user_inputs()
+  else:
+    args = vars(parser.parse_args())
+  return args
 
 def dataSelection(preds, threshold):
   return preds[preds > threshold]
@@ -180,7 +222,7 @@ if __name__ == "__main__":
   printInfo(mesages["start"], start.strftime(datetimeFormatOutput))
 
   # Запрашиваем параметры у пользователя
-  user_args = get_user_inputs()
+  user_args = parseArgs()
 
   from prediction import prepair_model, prepair_data_level1, prepair_data_level2, \
       prepair_dataset, make_predictions, save_rubrics, toRubrics
@@ -215,22 +257,21 @@ if __name__ == "__main__":
 
   for i in tqdm(range(df_test.shape[0])):
       dataset_loader = prepair_dataset(df_test.iloc[[i]])
-
       predictions_level1 = make_predictions(model1, dataset_loader, device=device)
       if (user_args['level'] == "RGNTI1"):
           predictions_level1 = toRubrics(predictions_level1, 1, user_args['threshold'])
-          save_rubrics(df_test, predictions_level1, user_args, i == 0)
+          save_rubrics(df_test.iloc[[i]], predictions_level1, user_args, prog, i == 0)
       else:
           df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, user_args['threshold'])
           dataset_loader2 = prepair_dataset(df_test2)
           predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
           if (user_args['level'] == "RGNTI2"):
               predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
-              save_rubrics(df_test2, predictions_level2, user_args, i == 0)
+              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
           else:
               printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
               predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
-              save_rubrics(df_test2, predictions_level2, user_args, i == 0)
+              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
 
   del model1
   del model2

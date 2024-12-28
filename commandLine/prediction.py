@@ -252,7 +252,7 @@ def toRubrics(preds, level = 1, threshold = 0.5):
     list_true_numbers_GRNTI.append(list_numbers)
   return list_true_numbers_GRNTI
 
-def save_rubrics(dataset, list_true_numbers_GRNTI, args, header = False):
+def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False):
   df = pd.DataFrame(columns=['result', 'rubricator', 'language', 'threshold', 'version', 'normalize', 'correct'])
   df.index.name='id'
   indexes = dataset.index.tolist()
@@ -262,8 +262,9 @@ def save_rubrics(dataset, list_true_numbers_GRNTI, args, header = False):
       res = 'EMPTY'
     else:
       k = []
+      list_true_numbers_GRNTI[i] = dict(sorted(list_true_numbers_GRNTI[i].items(), key=lambda item: item[1], reverse=True))
       for key, value in list_true_numbers_GRNTI[i].items():
         k.append('{}-{:1.5f}'.format(key, value))
       res = '\\'.join(k)
-    df.loc[indexes[i]] = [res, 'RGNTI', args.language, args.threshold, '1.0.0', args.normalisation, dataset.iloc[i]['correct']]
-  df.to_csv(args.outFile, sep='\t', mode='a', header=header)
+    df.loc[indexes[i]] = [res, args['level'], args['language'], args['threshold'], prog['version'], args['normalisation'], dataset.iloc[i]['correct']]
+  df.to_csv(args['outFile'], sep='\t', mode='a', header=header)
