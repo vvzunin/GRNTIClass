@@ -1,199 +1,99 @@
-description = {
-  "ru": "Автоматизированный классификатор текстов по кодам ГРНТИ.",
-  "en": "Automation text classifier for GRNTI codes."
-}
+import json
+import argparse
+import datetime
+from prediction import prepair_model, prepair_data_level1, prepair_data_level2, \
+    prepair_dataset, make_predictions, save_rubrics, toRubrics
+from tqdm import tqdm
+import torch
 
-arguments = {
-  "i": {
-    "name": "-i",
-    "default": "text.txt",
-    "type": str,
-    "choices": None,
-    "required": True,
-    "help": {
-      "ru": "Путь к существующему файлу (по-умолчанию: %(default)s)",
-      "en": "Path to an existing file (default: %(default)s)"
-    },
-    "metavar": "input_file.txt",
-    "dest": "inFile"
-  },
-  "o": {
-    "name": "-o",
-    "default": "results.csv",
-    "type": str,
-    "choices": None,
-    "required": True,
-    "help": {
-      "ru": "Путь к результирующему файлу (по-умолчанию: %(default)s)",
-      "en": "Path to an resulting file (default: %(default)s)"
-    },
-    "metavar": "output_file.csv",
-    "dest": "outFile"
-  },
-  "id": {
-    "name": "-id",
-    "default": "RGNTI3",
-    "type": str,
-    "choices": ["RGNTI1", "RGNTI2", "RGNTI3"],
-    "required": True,
-    "help": {
-      "ru": "Идентификатор рубрикатора (по-умолчанию: %(default)s)",
-      "en": "Rubricator ID (default: %(default)s)"
-    },
-    "metavar": "RGNTI(/1/2/3)",
-    "dest": "level"
-  },
-  "f": {
-    "name": "-f",
-    "default": "plain",
-    "type": str,
-    "choices": ["plain", "multidoc"],
-    "required": True,
-    "help": {
-      "ru": "Формат файла (по-умолчанию: %(default)s)",
-      "en": "File format (default: %(default)s)"
-    },
-    "metavar": "format",
-    "dest": "format"
-  },
-  "l": {
-    "name": "-l",
-    "default": "ru",
-    "type": str,
-    "choices": ["ru", "en"],
-    "required": True,
-    "help": {
-      "ru": "Язык текстов (по-умолчанию: %(default)s)",
-      "en": "Text language (default: %(default)s)"
-    },
-    "metavar": "language",
-    "dest": "language"
-  },
-  "t": {
-    "name": "-t",
-    "default": 0.5,
-    "type": float,
-    "choices": None,
-    "required": True,
-    "help": {
-      "ru": "Минимальная вероятность рубрики (по-умолчанию: %(default)s)",
-      "en": "Minimum rubric probability (default: %(default)s)"
-    },
-    "metavar": "threshold",
-    "dest": "threshold"
-  },
-  "n": {
-    "name": "-n",
-    "default": "not",
-    "type": str,
-    "choices": ["not", "some", "all"],
-    "required": False,
-    "help": {
-      "ru": "Нормализация результатов (по-умолчанию: %(default)s)",
-      "en": "Results normalisation (default: %(default)s)"
-    },
-    "metavar": "normalisation",
-    "dest": "normalisation"
-  },
-}
+
+with open("parameters.json", "r", encoding="utf-8") as f:
+    parameters = json.load(f)
 
 lang = "ru"
-datetimeFormatOutput = "%d.%m.%Y %H:%M:%S.%f"
-models = {
-  "lora": {
-    1: "..\\models\\bert\\expriment_save_model",
-    2: "..\\models\\bert\\expriment_save_model2",
-    3: ""
-  }
-}
+
+
+def printInfo(message, args=[]):
+    print(message[lang].format(*args))
+
+def parseArgs():
+    parser = argparse.ArgumentParser(prog=parameters["prog"]["name"],
+                                     description=parameters["descriptions"][lang])
+    parser.add_argument('--version', action='version',
+                        version=f"%(prog)s {parameters['prog']['version']}")
+
+    for key, arg in parameters["arguments"].items():
+        parser.add_argument(
+            arg["name"],
+            default=arg["default"],
+            type=eval(arg["type"]),
+            choices=arg["choices"],
+            required=arg["required"],
+            help=arg["help"][lang],
+            metavar=arg["metavar"],
+            dest=arg["dest"],
+        )
+
+    args = vars(parser.parse_args())
+    return args
+
+
+def dataSelection(preds, threshold):
+    return preds[preds > threshold]
+
+
+def main():
+    start = datetime.datetime.now()
+    printInfo(parameters["messages"]["start"], [start.strftime(parameters["datetime_format_output"])])
+
+    user_args = parseArgs()
+
+    torch.cuda.empty_cache()
+    printInfo(parameters["messages"]["libs"], [datetime.datetime.now().strftime(parameters["datetime_format_output"])])
+
+    model1 = None if not parameters["arguments"]["m"]["choices"] else prepair_model(n_classes=36, lora_model_path=user_args['m'])
+    model2 = None
+    model3 = None
+
+    if user_args['level'] in ["RGNTI2", "RGNTI3"]:
+        model2 = None if not parameters["arguments"]["m"]["choices"] else prepair_model(n_classes=246, lora_model_path=user_args['m'])
+    if user_args['level'] == "RGNTI3":
+        model3 = None if not parameters["arguments"]["m"]["choices"] else prepair_model(n_classes=0, lora_model_path=user_args['m'])
+
+    if model1 is None or (model2 is None and user_args['level'] in ["RGNTI2", "RGNTI3"]) or (model3 is None and user_args['level'] == "RGNTI3"):
+        printInfo(parameters["messages"]["model_error"], [datetime.datetime.now().strftime(parameters["datetime_format_output"])])
+        exit()
+
+    printInfo(parameters["messages"]["start_predict"], [datetime.datetime.now().strftime(parameters["datetime_format_output"])])
+    df_test = prepair_data_level1(user_args['i'], format=user_args['f'])
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    printInfo(parameters["messages"]["device"], [datetime.datetime.now().strftime(parameters["datetime_format_output"]), device])
+
+    if user_args['n'] != "not":
+        printInfo(parameters["messages"]["bad_flag"], [datetime.datetime.now().strftime(parameters["datetime_format_output"]), '-n', user_args['n']])
+        exit()
+
+    for i in tqdm(range(df_test.shape[0])):
+        dataset_loader = prepair_dataset(df_test.iloc[[i]])
+        predictions_level1 = make_predictions(model1, dataset_loader, device=device)
+        if user_args['level'] == "RGNTI1":
+            predictions_level1 = toRubrics(predictions_level1, 1, user_args['t'])
+            save_rubrics(df_test.iloc[[i]], predictions_level1, user_args, parameters["prog"], i == 0)
+        else:
+            df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, user_args['t'])
+            dataset_loader2 = prepair_dataset(df_test2)
+            predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
+            if user_args['level'] == "RGNTI2":
+                predictions_level2 = toRubrics(predictions_level2, 2, user_args['t'])
+                save_rubrics(df_test2, predictions_level2, user_args, parameters["prog"], i == 0)
+            else:
+                printInfo(parameters["messages"]["not_complete"], [datetime.datetime.now().strftime(parameters["datetime_format_output"])])
+
+    del model1
+    del model2
+    del model3
+
+    printInfo(parameters["messages"]["finish"], [datetime.datetime.now().strftime(parameters["datetime_format_output"])])
 
 if __name__ == "__main__":
-  import datetime
-  start = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Программа запущена.".format(start.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Programm started.".format(start.strftime(datetimeFormatOutput)))
-
-  import argparse
-  from prediction import prepair_model, prepair_data_level1, prepair_data_level2,\
-  prepair_dataset, make_predictions, save_rubrics_names
-  import torch
-
-  libs = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Библиотеки импортированы.".format(libs.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Libraries imported.".format(libs.strftime(datetimeFormatOutput)))
-
-  parser = argparse.ArgumentParser(description=description[lang])
-  for i in arguments:
-    parser.add_argument(
-      arguments[i]["name"],
-      default=arguments[i]["default"],
-      type=arguments[i]["type"],
-      choices=arguments[i]["choices"],
-      required=arguments[i]["required"],
-      help=arguments[i]["help"][lang],
-      metavar=arguments[i]["metavar"],
-      dest=arguments[i]["dest"]
-    )
-    
-  args = parser.parse_args()
-  torch.cuda.empty_cache()
-
-  model1 = None if models ["lora"][1] == "" else prepair_model(n_classes=31, lora_model_path=models["lora"][1])
-  model2 = None
-  model3 = None
-  if ((args.level == "RGNTI2") or (args.level == "RGNTI3")):
-    model2 = None if models ["lora"][2] == "" else prepair_model(n_classes=246, lora_model_path=models["lora"][2])
-  if (args.level == "RGNTI3"):
-    model3 = None if models ["lora"][3] == "" else prepair_model(n_classes=0, lora_model_path=models["lora"][3])
-  
-  if ((model1 is None) or
-      ((model2 is None) and ((args.level == "RGNTI2") or (args.level == "RGNTI3"))) or
-      ((model3 is None) and (args.level == "RGNTI3"))):
-    if (lang == "ru"):
-      print("{} Одна из необходимых моделей для вычислений не загружена или не найдена."
-            .format(libs.strftime(datetimeFormatOutput)))
-    elif (lang == "en"):
-      print("{} One of the models required for calculations was not loaded or not found."
-            .format(libs.strftime(datetimeFormatOutput)))
-    exit()
-
-  modelsTime = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Модели загружены.".format(modelsTime.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Models loaded.".format(modelsTime.strftime(datetimeFormatOutput)))
-
-  df_test = prepair_data_level1(args.inFile, format=args.format)
-  dataset_test = prepair_dataset(df_test)
-
-  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-  deviceTime = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Устройство выполнения: {}".format(deviceTime.strftime(datetimeFormatOutput), device))
-  elif (lang == "en"):
-    print("{} Device: {}".format(deviceTime.strftime(datetimeFormatOutput), device))
-
-  predictions_level1 = make_predictions(model1, dataset_test, device=device, threshold=0.5)
-  save_rubrics_names(predictions_level1, path_to_csv = "result1.csv")
-
-  del model1
-  torch.cuda.empty_cache()
-  print("Part for second level")
-  
-  df_test2 = prepair_data_level2(df_test, predictions_level1)
-
-  dataset_test2 = prepair_dataset(df_test2)
-
-  predictions_level2 = make_predictions(model2, dataset_test2, device=device, threshold=0.5)
-
-  save_rubrics_names(predictions_level2, path_to_csv = "result2.csv")
-
-  finish = datetime.datetime.now()
-  if (lang == "ru"):
-    print("{} Программа завершена.".format(finish.strftime(datetimeFormatOutput)))
-  elif (lang == "en"):
-    print("{} Programm finished.".format(finish.strftime(datetimeFormatOutput)))
+    main()

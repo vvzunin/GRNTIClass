@@ -1,0 +1,107 @@
+{
+    "prog": {
+        "name": "MyProgram",
+        "version": "1.0"
+    },
+    "descriptions": {
+        "en": "This is a description in English.",
+        "ru": "Это описание на русском."
+    },
+    "messages": {
+        "start": {
+            "en": "Starting program: {}",
+            "ru": "Запуск программы: {}"
+        },
+        "finish": {
+            "en": "Program finished: {}",
+            "ru": "Программа завершена: {}"
+        },
+        "libs": {
+            "en": "Libraries loaded for: {}",
+            "ru": "Библиотеки загружены для: {}"
+        },
+        "model_error": {
+            "en": "Error loading models for: {}",
+            "ru": "Ошибка загрузки моделей для: {}"
+        },
+        "start_predict": {
+            "en": "Prediction started for: {}",
+            "ru": "Прогнозирование начато для: {}"
+        },
+        "device": {
+            "en": "Using device: {} - {}",
+            "ru": "Используется устройство: {} - {}"
+        },
+        "bad_flag": {
+            "en": "Invalid flag {}: {}",
+            "ru": "Недопустимый флаг {}: {}"
+        },
+        "file_error": {
+            "en": "Error: parameter file not found.",
+            "ru": "Ошибка: файл параметров не найден."
+        },
+        "file_format_error": {
+            "en": "Error: invalid parameter file format.",
+            "ru": "Ошибка: неверный формат файла параметров."
+        },
+        "not_complete": {
+            "en": "Model 3 predictions not completed.",
+            "ru": "Предсказания модели 3 не завершены."
+        }
+    },
+    "arguments": {
+        "m": {
+            "name": "--model",
+            "default": "model_a",
+            "type": "str",
+            "choices": ["model_a", "model_b"],
+            "required": true,
+            "help": {
+                "en": "Choose the model.",
+                "ru": "Выберите модель."
+            },
+            "metavar": "MODEL",
+            "dest": "m"
+        },
+        "i": {
+            "name": "--input",
+            "default": "input_file.csv",
+            "type": "str",
+            "choices": null,
+            "required": true,
+            "help": {
+                "en": "Input file path.",
+                "ru": "Путь к входному файлу."
+            },
+            "metavar": "INPUT",
+            "dest": "i"
+        },
+        "f": {
+            "name": "--format",
+            "default": "csv",
+            "type": "str",
+            "choices": ["csv", "json"],
+            "required": true,
+            "help": {
+                "en": "Input file format.",
+                "ru": "Формат входного файла."
+            },
+            "metavar": "FORMAT",
+            "dest": "f"
+        },
+        "n": {
+            "name": "--flag",
+            "default": "not",
+            "type": "str",
+            "choices": ["not", "yes"],
+            "required": false,
+            "help": {
+                "en": "Optional flag.",
+                "ru": "Опциональный флаг."
+            },
+            "metavar": "FLAG",
+            "dest": "n"
+        }
+    },
+    "datetime_format_output": "%Y-%m-%d %H:%M:%S"
+}
