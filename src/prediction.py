@@ -25,12 +25,11 @@ def prepair_model(n_classes, lora_model_path,
     print("Подготовка модели")
     model = AutoModelForSequenceClassification.from_pretrained(pre_trained_model_name,
                                                                problem_type="multi_label_classification",
-                                                               num_labels=n_classes,
-                                                               torch_dtype=torch.float16)
+                                                               num_labels=n_classes)
 
 
-    for param in model.parameters():
-        param.requires_grad = False
+    # for param in model.parameters():
+    #     param.requires_grad = False
         
     peft_config = PeftConfig.from_pretrained(lora_model_path)
     peft_config.init_lora_weights = False
@@ -188,7 +187,8 @@ def make_predictions(model, dataset_test, device, threshold, early_break_iterati
 
 
             with torch.no_grad():
-                output = model(input_ids = inputs, attention_mask = mask, token_type_ids = token_type_ids)
+                output = model(input_ids = inputs, attention_mask = mask, 
+                               token_type_ids = token_type_ids)
             
             # Move logits and labels to CPU
             logits = output.logits.detach().cpu()
@@ -211,8 +211,8 @@ def make_predictions(model, dataset_test, device, threshold, early_break_iterati
             # if i % 150:           
             #     # gc.collect()
             #     torch.cuda.empty_cache()
-            if early_break_iteration_number and early_break_iteration_number == i + 1:
-                break
+            # if early_break_iteration_number and early_break_iteration_number == i + 1:
+            #     break
                 
         
 

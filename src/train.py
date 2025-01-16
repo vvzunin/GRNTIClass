@@ -11,7 +11,8 @@ from transformers import AutoModelForSequenceClassification,\
     AutoTokenizer, DataCollatorWithPadding, Trainer
 from collections import Counter
 from sklearn.model_selection import train_test_split
-from torchmetrics.classification import MultilabelF1Score, MultilabelAccuracy, MultilabelAUROC, MultilabelPrecision, MultilabelRecall
+from torchmetrics.classification import MultilabelF1Score, MultilabelAccuracy,\
+      MultilabelAUROC, MultilabelPrecision, MultilabelRecall, MultilabelStatScores
 from datasets import Dataset
 from TrainSettings import TrainSettings
 
@@ -22,7 +23,7 @@ from ignite.metrics.precision import Precision
 from ignite.metrics.recall import Recall
 from ignite.metrics.metrics_lambda import MetricsLambda
 
-
+import seaborn as sns
 tqdm2.pandas()
 def get_grnti1_BERT_dataframes(file_path, number_of_delteted_values, 
                                  minimal_number_of_elements_RGNTI2,
@@ -53,6 +54,7 @@ def get_grnti1_BERT_dataframes(file_path, number_of_delteted_values,
     plt.xlabel("RGNTI 1")
     plt.ylabel("Количество элементов")
     plt.title("Количество удаляемых текстов из датасета для 1-ого уровня ГРНТИ")
+    
     # plt.show()
     if dir_name:
         plt.savefig(dir_name + "Количество удаляемых текстов из датасета для 1-ого уровня ГРНТИ.png",
@@ -275,9 +277,31 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
 
     #код для графика 2
     if minimal_number_of_elements_RGNTI2 > 1:
-        pd.Series(np.concatenate(df_trunc2_deleted.values)).value_counts().plot.bar()
-        plt.xlabel("RGNTI 2")
-        plt.ylabel("Количество элементов")
+        fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+        deleted_values_count = pd.Series(np.concatenate(df_trunc2_deleted.values)).value_counts()
+        deleted_values_count = pd.DataFrame({'RGNTI 2':deleted_values_count.index, 
+                      'Количество элементов':deleted_values_count.values})
+
+        print(deleted_values_count.shape)
+
+        # deleted_values_count.plot.bar()
+
+        sns_plot1 = sns.barplot(y = "RGNTI 2", x = "Количество элементов", data = deleted_values_count)
+
+        # plt.xlabel("RGNTI 2")
+        # plt.ylabel("Количество элементов")
+        # plt.rc('xtick', labelsize=6)
+
+
+        sns_plot1.tick_params(labelsize=6)
+        # plt.xticks(rotation=90)
+        plt.xticks(fontsize=10)
+        
+        # sns_plot1.set_yticklabels(sns_plot1.get_yticks(), size = 6)
+        # sns_plot1.set_xticklabels(sns_plot1.get_xticks(), size = 10)
+        plt.tight_layout()
+
+
         plt.title("Количество удаляемых текстов из датасета для 2-ого уровня ГРНТИ")
         if dir_name:
             plt.savefig(dir_name + "Количество удаляемых текстов из датасета для 2-ого уровня ГРНТИ.png",
@@ -285,10 +309,27 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
 
     else:
         print("Элементы не удаляются из датасета по RGNTI 2")
- 
-    pd.Series(np.concatenate(df_trunc2['target_2'].values)).value_counts().plot.bar()
-    plt.xlabel("RGNTI 2")
-    plt.ylabel("Количество элементов")
+    fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+    residual_values = pd.Series(np.concatenate(df_trunc2['target_2'].values)).value_counts()
+    residual_values = pd.DataFrame({'RGNTI 2': residual_values.index, 
+                'Количество элементов': residual_values.values})
+    print(residual_values.shape)
+
+    # residual_values.plot.bar()
+    sns_plot2 = sns.barplot(y = "RGNTI 2", x = "Количество элементов", data = residual_values)
+
+
+    # sns_plot2.set_yticklabels(sns_plot2.get_yticks(), size = 6)
+    # sns_plot2.set_xticklabels(sns_plot2.get_xticks(), size = 10)
+
+    sns_plot2.tick_params(labelsize=6)
+    # plt.xticks(rotation=90)
+    plt.xticks(fontsize=10)
+
+    # plt.xlabel("RGNTI 2")
+    # plt.ylabel("Количество элементов")
+    # plt.rc('xtick', labelsize=6)
+    plt.tight_layout()
     plt.title("Количество элементов, остающихся в датасете для 2-ого уровня ГРНТИ")
     # plt.show()
     if dir_name:
@@ -501,7 +542,7 @@ def prepair_model(n_classes,
         target_modules= ["query", "key"],
         task_type=TaskType.SEQ_CLS,
         inference_mode=False,
-        modules_to_save=["classifier"]
+        modules_to_save=['classifier.bias', 'classifier.weight']#["classifier"]
     )
     model_peft = get_peft_model(model, config)
     model_peft.print_trainable_parameters()
@@ -645,7 +686,7 @@ def save_parameters(dir_name,
 
 def test_predictons(preds, test_dataset_labels, dir_name, 
                        n_classes, level,
-                       grnti_path="", change_for_topk_y=True):
+                       grnti_path="", change_for_topk_y=False):
     treshold_list = [0.1 + 0.05 * x for x in range(0, 18, 1)]
     f1_score_macro_list = []
     f1_score_micro_list = []
@@ -736,23 +777,66 @@ def test_predictons(preds, test_dataset_labels, dir_name,
 
     multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none',
                                                     threshold=best_treshold)
-    multilabel_f1_score_none_res = multilabel_f1_score_none(preds, torch.tensor(test_dataset_labels))
+    multilabel_f1_score_none_res = multilabel_f1_score_none(preds, 
+                                                            torch.tensor(test_dataset_labels))
+    
+    multilabel_precision_none = MultilabelPrecision(num_labels=n_classes, average='none',
+                                                    threshold=best_treshold)
+    multilabel_precision_none_res = multilabel_precision_none(preds, 
+                                                            torch.tensor(test_dataset_labels))
+    
+    multilabel_recall_none = MultilabelRecall(num_labels=n_classes, average='none',
+                                                    threshold=best_treshold)
+    multilabel_recall_none_res = multilabel_recall_none(preds, 
+                                                            torch.tensor(test_dataset_labels))
+    
+    mulitlabel_stat_scores_none= MultilabelStatScores(num_labels=n_classes, average='none')
+    mulitlabel_stat_scores_none_res = mulitlabel_stat_scores_none(preds, 
+                                                            torch.tensor(test_dataset_labels))[:, :-1]
+    
 
     with open(grnti_path + f'my_grnti{level}_int.json', "r") as code_file:
         grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
+
     grnti_mapping_dict_true_numbers_reverse = {y: x for x, y in 
                                                grnti_mapping_dict_true_numbers.items()}
     
 
-    df_rubrics = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    df_rubrics_f1 = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
                                     for key in range(n_classes)], 
                                     "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
-    df_rubrics.sort_values(by=['№'], 
+    df_rubrics_f1.sort_values(by=['№'], 
                            ascending=True).to_csv(dir_name + "threshold_№_F1_sorted_by_№.csv",
                                                    index=False) 
 
-    df_rubrics.sort_values(by=['F1'], 
-                           ascending=False).to_csv(dir_name + "threshold_№_F1_sorted_by_F1.csv", 
+    # df_rubrics_f1.sort_values(by=['F1'], 
+    #                        ascending=False).to_csv(dir_name + "threshold_№_F1_sorted_by_F1.csv", 
+    #                                                index=False) 
+    df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                for key in range(n_classes)], 
+                                "TP":mulitlabel_stat_scores_none_res[:, 0],
+                                "FP":mulitlabel_stat_scores_none_res[:, 1],
+                                "TN":mulitlabel_stat_scores_none_res[:, 2],
+                                "FN":mulitlabel_stat_scores_none_res[:, 3]})
+    
+    df_rubrics_stats.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "threshold_№_stats_sorted_by_№.csv",
+                                                   index=False) 
+    
+    df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                    for key in range(n_classes)], 
+                                    "Precision":torch.round(multilabel_precision_none_res, 
+                                                            decimals=2)})
+    df_rubrics_precision.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "threshold_№_Precision_sorted_by_№.csv",
+                                                   index=False) 
+
+    df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                    for key in range(n_classes)], 
+                                    "Recall":torch.round(multilabel_recall_none_res, 
+                                                            decimals=2)})
+    df_rubrics_recall.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "threshold_№_Recall_sorted_by_№.csv",
                                                    index=False) 
     
     preds_best_treshold = torch.sum(preds >= best_treshold, axis = 1)
@@ -767,7 +851,7 @@ def test_predictons(preds, test_dataset_labels, dir_name,
             torch.min(preds_best_treshold_no_zeros))
     print("Максимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
             torch.max(preds_best_treshold_no_zeros))
-    print("Доля статей без предсказанного класса:", 
+    print("Доля статей c пустым ответом классификатора (Empty):", 
           1 - preds_best_treshold_no_zeros.shape[0]/ preds_best_treshold.shape[0])
     plt.figure()
 
@@ -824,10 +908,10 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     plt.xticks(treshold_list, rotation=70)
     plt.title("Зависимость f1_score от threshold")
     plt.xlabel("threshold")
-    plt.ylabel("Доля элементов с непредсказанным классом ")
+    plt.ylabel("Доля элементов с пустым результатом классификации (Empty)")
     plt.legend()
     plt.grid()
-    plt.savefig(dir_name + "Зависимость доли элементов с непредсказанным классом от threshold.png",
+    plt.savefig(dir_name + "Зависимость доли элементов с пустым результатом классификации от threshold.png",
                     bbox_inches='tight')
     plt.close()
     with open(dir_name + "best_metrics_threshold.json", "w") as outfile:
@@ -949,6 +1033,20 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none')
     multilabel_f1_score_none_res = multilabel_f1_score_none(pred_for_top_k, labels_for_top_k)
 
+    multilabel_precision_none = MultilabelPrecision(num_labels=n_classes, average='none',
+                                                    threshold=best_treshold)
+    multilabel_precision_none_res = multilabel_precision_none(pred_for_top_k, labels_for_top_k)
+    
+    multilabel_recall_none = MultilabelRecall(num_labels=n_classes, average='none',
+                                                    threshold=best_treshold)
+    multilabel_recall_none_res = multilabel_recall_none(pred_for_top_k, labels_for_top_k)
+    
+    mulitlabel_stat_scores_none= MultilabelStatScores(num_labels=n_classes, average='none')
+    mulitlabel_stat_scores_none_res = mulitlabel_stat_scores_none(pred_for_top_k,
+                                                                  labels_for_top_k)[:, :-1]
+    
+
+
     with open(grnti_path + f'my_grnti{level}_int.json', "r") as code_file:
         grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
     grnti_mapping_dict_true_numbers_reverse = {y: x for x, y in 
@@ -962,24 +1060,57 @@ def test_predictons(preds, test_dataset_labels, dir_name,
                            ascending=True).to_csv(dir_name + "top_k_№_F1_sorted_by_№.csv",
                                                    index=False) 
 
-    df_rubrics.sort_values(by=['F1'], 
-                           ascending=False).to_csv(dir_name + "top_k_№_F1_sorted_by_F1.csv", 
+    # df_rubrics.sort_values(by=['F1'], 
+    #                        ascending=False).to_csv(dir_name + "top_k_№_F1_sorted_by_F1.csv", 
+    #                                                index=False) 
+
+    df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                        for key in range(n_classes)], 
+                                        "Precision":torch.round(multilabel_precision_none_res, 
+                                                                decimals=2)})
+    df_rubrics_precision.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "top_k_№_Precision_sorted_by_№.csv",
                                                    index=False) 
-    
-    preds_best_treshold = torch.sum(preds > 0., axis = 1)
-    
-    preds_best_treshold_no_zeros = preds_best_treshold[preds_best_treshold > 0.99]
+
+    df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                    for key in range(n_classes)], 
+                                    "Recall":torch.round(multilabel_recall_none_res, 
+                                                            decimals=2)})
+    df_rubrics_recall.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "top_k_№_Recall_sorted_by_№.csv",
+                                                   index=False) 
 
 
-    print("Cтатистика количества пркдсказываемых классов при не заданном threshold:")
-    print("Среднее число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.sum(preds_best_treshold_no_zeros)/preds_best_treshold_no_zeros.shape[0])
-    print("Минимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.min(preds_best_treshold_no_zeros))
-    print("Максимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.max(preds_best_treshold_no_zeros))
-    print("Доля статей без предсказанного класса:", 
-          1 - preds_best_treshold_no_zeros.shape[0]/ preds_best_treshold.shape[0])
+    df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+                                for key in range(n_classes)], 
+                                "TP":mulitlabel_stat_scores_none_res[:, 0],
+                                "FP":mulitlabel_stat_scores_none_res[:, 1],
+                                "TN":mulitlabel_stat_scores_none_res[:, 2],
+                                "FN":mulitlabel_stat_scores_none_res[:, 3]})
+    
+    df_rubrics_stats.sort_values(by=['№'], 
+                           ascending=True).to_csv(dir_name + "top_k_№_stats_sorted_by_№.csv",
+                                                   index=False) 
+   
+   
+    preds_best_treshold = torch.sum(preds >= 1e-8, axis = 1)
+    
+    preds_best_treshold_no_zeros_sum =  torch.sum(preds_best_treshold > 0.99)
+
+    print("Количество отказов от классификации (Reject)", 
+          preds_best_treshold.shape[0] - preds_best_treshold_no_zeros_sum)
+    print("Доля отказов от классификации (Reject)", 
+          1 - preds_best_treshold_no_zeros_sum / preds_best_treshold.shape[0])
+    
+    # print("Cтатистика количества пркдсказываемых классов при не заданном threshold:")
+    # print("Среднее число предсказываемых классов для одной статьи, для которой получено предсказание",
+    #         torch.sum(preds_best_treshold_no_zeros)/preds_best_treshold_no_zeros.shape[0])
+    # print("Минимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
+    #         torch.min(preds_best_treshold_no_zeros))
+    # print("Максимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
+    #         torch.max(preds_best_treshold_no_zeros))
+    # print("Доля статей без предсказанного класса:", 
+    #       1 - preds_best_treshold_no_zeros.shape[0]/ preds_best_treshold.shape[0])
     
     plt.figure()
     plt.plot(top_k_list, f1_score_macro_list, label = "macro")
@@ -1027,9 +1158,9 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     print("recall_top_k_weighted:", torch.stack(recall_weighted_list))
 
     plt.figure()
-    plt.plot(top_k_list, torch.stack(recall_macro_list).to(int), label = "macro")
-    plt.plot(top_k_list, torch.stack(recall_micro_list).to(int), label = "micro")
-    plt.plot(top_k_list, torch.stack(recall_weighted_list).to(int), label = "weighted")
+    plt.plot(top_k_list, torch.stack(recall_macro_list), label = "macro")
+    plt.plot(top_k_list, torch.stack(recall_micro_list), label = "micro")
+    plt.plot(top_k_list, torch.stack(recall_weighted_list), label = "weighted")
     plt.xticks(top_k_list)
     plt.title("Зависимость recall от числа наиболее вероятных классов")
     plt.xlabel("Число наиболее вероятных классов")
@@ -1038,42 +1169,7 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     plt.grid()
     plt.savefig(dir_name + "Зависимость recall от числа наиболее вероятных классов.png",
                     bbox_inches='tight')
-    # plt.close()
+    plt.close()
 
     with open(dir_name + "best_metrics_top_k.json", "w") as outfile:
         json.dump(best_metrics, outfile)
-
-    def eval_step(engine, batch):
-        return batch
-
-    default_evaluator = Engine(eval_step)
-    metric = ClassificationReport(output_dict=True, is_multilabel=True)
-    weighted_metric_precision = Precision(average='weighted', is_multilabel=True)
-    weighted_metric_recall= Recall(average='weighted', is_multilabel=True)
-
-    preds = (preds >= 0.5).int() # torch.tensor(
-    input = torch.tensor(test_dataset_labels).int()
-
-    precision = Precision(average=False, is_multilabel=True)
-    recall = Recall(average=False, is_multilabel=True)
-    F1 = precision * recall * 2 / (precision + recall + 1e-20)
-    freq = torch.tensor([sum(input[:, i]) for i in range(input.shape[1])])#.tolist()
-    # weights_per_class = input.shape[0] / (torch.tensor([el if el > 0 else 1 for el in freq])* input.shape[1])
-    F1_wieghted = MetricsLambda(lambda t: torch.sum(t * freq).item() / input.shape[0], F1) # 
-
-    metric.attach(default_evaluator, "cr")
-    weighted_metric_precision.attach(default_evaluator, "weighted precision")
-    weighted_metric_recall.attach(default_evaluator, "weighted recall")
-    F1_wieghted.attach(default_evaluator, "weighted F1")
-
-
-
-    state = default_evaluator.run([[preds, input]])
-    result = state.metrics['cr']
-    result['weighted precision'] = state.metrics['weighted precision']
-
-    result['weighted recall'] = state.metrics['weighted recall']
-    result['weighted F1'] = state.metrics['weighted F1']
-
-    with open(dir_name + "test_results.json", "w") as outfile:
-        json.dump(result, outfile)
