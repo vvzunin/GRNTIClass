@@ -1,12 +1,15 @@
 import pandas as pd
 import numpy as np
 
-def generate_prediction_results(predictions, text_ids, language, threshold,
-                                normalize, correctness, output_path):
+LEVEL_ALL = 0
+LEVEL_1 = 1
+LEVEL_2 = 2
+LEVEL_3 = 3
 
+def generate_prediction_results(predictions, text_ids, language, threshold,
+                                normalize, correctness, output_path, grnti_level):
     rows = []
     for i, pred in enumerate(predictions):
-
         code_probs = [
             (code, f"{prob:.2f}")
             for code, prob in sorted(pred.items(), key=lambda x: x[1], reverse=True)
@@ -14,15 +17,22 @@ def generate_prediction_results(predictions, text_ids, language, threshold,
         while len(code_probs) < 3:
             code_probs.append(("EMPTY", "EMPTY"))
 
-
-        flattened = [item for sublist in code_probs for item in sublist]
-
+        if grnti_level == LEVEL_ALL:
+            probability = "/".join([prob for _, prob in code_probs])
+        elif grnti_level == LEVEL_1:
+            probability = code_probs[0][1]
+        elif grnti_level == LEVEL_2:
+            probability = code_probs[1][1]
+        elif grnti_level == LEVEL_3:
+            probability = code_probs[2][1]
+        else:
+            probability = "INVALID_LEVEL"
 
         result_status = "REJECT" if any(prob == "EMPTY" for _, prob in code_probs) else ""
 
         row = [
             text_ids[i],
-            *flattened,
+            probability,
             language,
             threshold,
             normalize,
@@ -31,19 +41,16 @@ def generate_prediction_results(predictions, text_ids, language, threshold,
         ]
         rows.append(row)
 
-    # Create the DataFrame
     column_names = [
         "ID of text",
-        "Code1", "Probability1",
-        "Code2", "Probability2",
-        "Code3", "Probability3",
+        "Probability",
         "Language",
         "Threshold",
         "Normalize",
         "Correct",
         "Result Status",
     ]
+
     df = pd.DataFrame(rows, columns=column_names)
 
-    # Save to CSV
     df.to_csv(output_path, index=False, encoding="utf-8-sig")
