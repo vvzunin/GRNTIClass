@@ -46,10 +46,12 @@ mesages = {
   }
 }
 
+import os
+
 models = {
   "lora": {
-    1: "models\\bert2\\bert_peft_level1",
-    2: "models\\bert2\\bert_peft_level2_with_labels",
+    1: os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level1",
+    2: os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level2_with_labels",
     3: ""
   }
 }
@@ -259,18 +261,18 @@ if __name__ == "__main__":
       dataset_loader = prepair_dataset(df_test.iloc[[i]])
       predictions_level1 = make_predictions(model1, dataset_loader, device=device)
       if (user_args['level'] == "RGNTI1"):
-          predictions_level1 = toRubrics(predictions_level1, 1, user_args['threshold'])
+          predictions_level1 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level1, 1, user_args['threshold'])
           save_rubrics(df_test.iloc[[i]], predictions_level1, user_args, prog, i == 0)
       else:
-          df_test2 = prepair_data_level2(df_test.iloc[[i]], predictions_level1, user_args['threshold'])
+          df_test2 = prepair_data_level2(os.path.dirname(os.path.abspath(__file__)), df_test.iloc[[i]], predictions_level1, user_args['threshold'])
           dataset_loader2 = prepair_dataset(df_test2)
           predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
           if (user_args['level'] == "RGNTI2"):
-              predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
+              predictions_level2 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level2, 2, user_args['threshold'])
               save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
           else:
               printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
-              predictions_level2 = toRubrics(predictions_level2, 2, user_args['threshold'])
+              predictions_level2 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level2, 2, user_args['threshold'])
               save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
 
   del model1

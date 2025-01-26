@@ -51,19 +51,19 @@ def prepair_data_level1(file_path, format="multidoc"):
     df_test.index.name='id'
   return df_test
 
-def prepair_data_level2(df_test, preds, threshold):
+def prepair_data_level2(path, df_test, preds, threshold):
   y_pred_list = []
   for pred in preds:
     a = np.array(pred)
     y_pred_list.append((a > threshold).tolist())
   preds = y_pred_list
 
-  with open("my_grnti1_int.json", "r") as code_file:
+  with open(path + "\\my_grnti1_int.json", "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  # Загружаем файл с кодами
 
-  with open("GRNTI_1_ru.json", "r", encoding="utf-8") as code_file:
+  with open(path + "\\GRNTI_1_ru.json", "r", encoding="utf-8") as code_file:
     grnti_mapping_dict_true_names = json.load(code_file)  # Загружаем файл с кодами
 
   list_GRNTI = []
@@ -226,8 +226,8 @@ def make_predictions(model, dataset_test, device):
 
 #   np.savetxt(path_to_csv, list_thems, delimiter=", ", fmt="% s")
 
-def toRubrics(preds, level = 1, threshold = 0.5):
-  with open("my_grnti{}_int.json".format(level), "r") as code_file:
+def toRubrics(path, preds, level = 1, threshold = 0.5):
+  with open(path + "\\my_grnti{}_int.json".format(level), "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  # Загружаем файл с кодами
