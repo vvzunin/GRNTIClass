@@ -225,4 +225,4 @@ def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False):
         k.append('{}-{:1.5f}'.format(key, value))
       res = '\\'.join(k)
     df.loc[indexes[i]] = [res, args['level'], args['language'], args['threshold'], prog['version'], args['normalisation'], dataset.iloc[i]['correct']]
-  df.to_csv(args['outFile'], sep='\t', mode='a', header=header)
+  df.to_csv(args['outFile'], sep='\t', mode='a', header=header, encoding='cp1251')

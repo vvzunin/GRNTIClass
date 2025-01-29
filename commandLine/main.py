@@ -1,6 +1,6 @@
 prog = {
   'name': 'GRNTIClass',
-  'version': '1.2.0'
+  'version': '1.2.1'
 }
 
 description = {
@@ -246,7 +246,7 @@ if __name__ == "__main__":
       ((model2 is None) and ((user_args['level'] == "RGNTI2") or (user_args['level'] == "RGNTI3"))) or
       ((model3 is None) and (user_args['level'] == "RGNTI3"))):
       printInfo(mesages["modelError"], datetime.datetime.now().strftime(datetimeFormatOutput))
-      exit()
+      quit()
 
   printInfo(mesages["startPredict"], datetime.datetime.now().strftime(datetimeFormatOutput))
   df_test = prepair_data_level1(user_args['inFile'], format=user_args['format'])
@@ -255,7 +255,7 @@ if __name__ == "__main__":
 
   if (user_args['normalisation'] != "not"):
       printInfo(mesages["badFlag"], (datetime.datetime.now().strftime(datetimeFormatOutput), '-n', user_args['normalisation']))
-      exit()
+      quit()
 
   for i in tqdm(range(df_test.shape[0])):
       dataset_loader = prepair_dataset(df_test.iloc[[i]])
