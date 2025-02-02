@@ -1,0 +1,16 @@
+{
+  "number_of_delteted_values": 11,
+  "minimal_number_of_elements_RGNTI2": 50,
+  "minimal_number_of_words": 10,
+  "max_number_tokens": 512,
+  "pre_trained_model_name": "DeepPavlov/rubert-base-cased",
+  "r": 16,
+  "lora_alpha": 32,
+  "lora_dropout": 0.05,
+  "epoch": 1,
+  "batch_size": 8,
+  "weight_decay": 1e-06,
+  "warmup_steps": 10,
+  "fp16": true,
+  "optim": "adamw_bnb_8bit"
+}
