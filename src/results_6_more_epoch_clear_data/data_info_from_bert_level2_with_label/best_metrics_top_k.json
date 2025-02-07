@@ -1,0 +1,1 @@
+{"best_top_k": 2, "f1_macro": 0.39116400480270386, "f1_micro": 0.4819745421409607, "f1_weighted": 0.47048813104629517, "precision_macro": 0.3827551603317261, "precision_micro": 0.3983439803123474, "precision_weighted": 0.41549164056777954, "recall_macro": 0.49659329652786255, "recall_micro": 0.6100523471832275, "recall_weighted": 0.6100522875785828}
