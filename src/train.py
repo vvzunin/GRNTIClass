@@ -534,20 +534,21 @@ def prepair_model(n_classes,
     # for param in model.parameters():
     #     param.requires_grad = False
     # lora для модели
-    config = LoraConfig(
-        r=r,
-        lora_alpha=lora_alpha,
-        lora_dropout=lora_dropout,
-        bias="none",
-        target_modules= ["query", "key"],
-        task_type=TaskType.SEQ_CLS,
-        inference_mode=False,
-        modules_to_save=['classifier.bias', 'classifier.weight']#["classifier"]
-    )
-    model_peft = get_peft_model(model, config)
-    model_peft.print_trainable_parameters()
+    # config = LoraConfig(
+    #     r=r,
+    #     lora_alpha=lora_alpha,
+    #     lora_dropout=lora_dropout,
+    #     bias="none",
+    #     target_modules= ["query", "key"],
+    #     task_type=TaskType.SEQ_CLS,
+    #     inference_mode=False,
+    #     modules_to_save=['classifier.bias', 'classifier.weight']#["classifier"]
+    # )
+    # model_peft = get_peft_model(model, config)
+    # model_peft.print_trainable_parameters()
 
-    return model_peft
+
+    return model
 
 # Функция подсчета всех метрик при валидации
 def prepair_compute_metrics(n_classes):
@@ -702,7 +703,7 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     recall_weighted_list = []
     
     best_treshold = None
-    best_metrics  = dict()
+    best_metrics_v1  = dict()
     best_some_f1 = 0
     preds = torch.tensor(preds)
 
@@ -760,19 +761,19 @@ def test_predictons(preds, test_dataset_labels, dir_name,
         if sum_f1 > best_some_f1:
             best_some_f1 = sum_f1
             best_treshold = treshold
-            best_metrics["best_treshold"] = best_treshold
+            best_metrics_v1["best_top_k/best_threshold"] = best_treshold
 
-            best_metrics["f1_macro"] = f1_score_macro_list[-1].detach().item()
-            best_metrics["f1_micro"] = f1_score_micro_list[-1].detach().item()
-            best_metrics["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
+            best_metrics_v1["f1_macro"] = f1_score_macro_list[-1].detach().item()
+            best_metrics_v1["f1_micro"] = f1_score_micro_list[-1].detach().item()
+            best_metrics_v1["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
 
-            best_metrics["precision_macro"] = precision_macro_list[-1].detach().item()
-            best_metrics["precision_micro"] = precision_micro_list[-1].detach().item()
-            best_metrics["precision_weighted"] = precision_weighted_list[-1].detach().item()
+            best_metrics_v1["precision_macro"] = precision_macro_list[-1].detach().item()
+            best_metrics_v1["precision_micro"] = precision_micro_list[-1].detach().item()
+            best_metrics_v1["precision_weighted"] = precision_weighted_list[-1].detach().item()
 
-            best_metrics["recall_macro"] = recall_macro_list[-1].detach().item()
-            best_metrics["recall_micro"] = recall_micro_list[-1].detach().item()
-            best_metrics["recall_weighted"] = recall_weighted_list[-1].detach().item()
+            best_metrics_v1["recall_macro"] = recall_macro_list[-1].detach().item()
+            best_metrics_v1["recall_micro"] = recall_micro_list[-1].detach().item()
+            best_metrics_v1["recall_weighted"] = recall_weighted_list[-1].detach().item()
 
 
     multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none',
@@ -802,42 +803,54 @@ def test_predictons(preds, test_dataset_labels, dir_name,
                                                grnti_mapping_dict_true_numbers.items()}
     
 
-    df_rubrics_f1 = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                    for key in range(n_classes)], 
-                                    "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
-    df_rubrics_f1.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "threshold_№_F1_sorted_by_№.csv",
-                                                   index=False) 
-
-    # df_rubrics_f1.sort_values(by=['F1'], 
-    #                        ascending=False).to_csv(dir_name + "threshold_№_F1_sorted_by_F1.csv", 
+    # df_rubrics_f1 = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                 for key in range(n_classes)], 
+    #                                 "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
+    # df_rubrics_f1.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "threshold_№_F1_sorted_by_№.csv",
     #                                                index=False) 
-    df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                for key in range(n_classes)], 
-                                "TP":mulitlabel_stat_scores_none_res[:, 0],
-                                "FP":mulitlabel_stat_scores_none_res[:, 1],
-                                "TN":mulitlabel_stat_scores_none_res[:, 2],
-                                "FN":mulitlabel_stat_scores_none_res[:, 3]})
-    
-    df_rubrics_stats.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "threshold_№_stats_sorted_by_№.csv",
-                                                   index=False) 
-    
-    df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                    for key in range(n_classes)], 
-                                    "Precision":torch.round(multilabel_precision_none_res, 
-                                                            decimals=2)})
-    df_rubrics_precision.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "threshold_№_Precision_sorted_by_№.csv",
-                                                   index=False) 
 
-    df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                    for key in range(n_classes)], 
-                                    "Recall":torch.round(multilabel_recall_none_res, 
-                                                            decimals=2)})
-    df_rubrics_recall.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "threshold_№_Recall_sorted_by_№.csv",
-                                                   index=False) 
+
+    # df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                             for key in range(n_classes)], 
+    #                             "TP":mulitlabel_stat_scores_none_res[:, 0],
+    #                             "FP":mulitlabel_stat_scores_none_res[:, 1],
+    #                             "TN":mulitlabel_stat_scores_none_res[:, 2],
+    #                             "FN":mulitlabel_stat_scores_none_res[:, 3]})
+    
+    # df_rubrics_stats.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "threshold_№_stats_sorted_by_№.csv",
+    #                                                index=False) 
+    
+    # df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                 for key in range(n_classes)], 
+    #                                 "Precision":torch.round(multilabel_precision_none_res, 
+    #                                                         decimals=2)})
+    # df_rubrics_precision.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "threshold_№_Precision_sorted_by_№.csv",
+    #                                                index=False) 
+
+    # df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                 for key in range(n_classes)], 
+    #                                 "Recall":torch.round(multilabel_recall_none_res, 
+    #                                                         decimals=2)})
+    # df_rubrics_recall.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "threshold_№_Recall_sorted_by_№.csv",
+    #                                                index=False) 
+    
+    df_rubrics_f1_precision_recall_stats = pd.DataFrame({
+        "№": [grnti_mapping_dict_true_numbers_reverse[key] for key in range(n_classes)], 
+        "F1": torch.round(multilabel_f1_score_none_res, decimals=2),
+        "Precision":torch.round(multilabel_precision_none_res, decimals=2),
+        "Recall":torch.round(multilabel_recall_none_res, decimals=2),
+        "TP":mulitlabel_stat_scores_none_res[:, 0],
+        "FP":mulitlabel_stat_scores_none_res[:, 1],
+        "TN":mulitlabel_stat_scores_none_res[:, 2],
+        "FN":mulitlabel_stat_scores_none_res[:, 3]}).sort_values(by=['№'], ascending=True)
+
+    df_rubrics_f1_precision_recall_stats.to_csv(
+        dir_name + "threshold_№_F1_Precision_Recall_Stats.csv",
+        index=False) 
     
     preds_best_treshold = torch.sum(preds >= best_treshold, axis = 1)
     
@@ -914,8 +927,10 @@ def test_predictons(preds, test_dataset_labels, dir_name,
     plt.savefig(dir_name + "Зависимость доли элементов с пустым результатом классификации от threshold.png",
                     bbox_inches='tight')
     plt.close()
-    with open(dir_name + "best_metrics_threshold.json", "w") as outfile:
-        json.dump(best_metrics, outfile)
+
+    
+    # with open(dir_name + "best_metrics_threshold.json", "w") as outfile:
+    #     json.dump(best_metrics, outfile)
 
     ###Часть с 1-м, 2-м, 3-м
     top_k_list = list(range(1, 4))
@@ -933,7 +948,7 @@ def test_predictons(preds, test_dataset_labels, dir_name,
 
 
     best_top_k = None
-    best_metrics  = dict()
+    best_metrics_v2  = dict()
     best_some_f1 = 0
     test_dataset_labels = torch.tensor(test_dataset_labels, dtype=float)
 
@@ -1002,19 +1017,19 @@ def test_predictons(preds, test_dataset_labels, dir_name,
         if sum_f1 > best_some_f1:
             best_some_f1 = sum_f1
             best_top_k = top_k
-            best_metrics["best_top_k"] = best_top_k
+            best_metrics_v2["best_top_k/best_threshold"] = best_top_k
 
-            best_metrics["f1_macro"] = f1_score_macro_list[-1].detach().item()
-            best_metrics["f1_micro"] = f1_score_micro_list[-1].detach().item()
-            best_metrics["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
+            best_metrics_v2["f1_macro"] = f1_score_macro_list[-1].detach().item()
+            best_metrics_v2["f1_micro"] = f1_score_micro_list[-1].detach().item()
+            best_metrics_v2["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
 
-            best_metrics["precision_macro"] = precision_macro_list[-1].detach().item()
-            best_metrics["precision_micro"] = precision_micro_list[-1].detach().item()
-            best_metrics["precision_weighted"] = precision_weighted_list[-1].detach().item()
+            best_metrics_v2["precision_macro"] = precision_macro_list[-1].detach().item()
+            best_metrics_v2["precision_micro"] = precision_micro_list[-1].detach().item()
+            best_metrics_v2["precision_weighted"] = precision_weighted_list[-1].detach().item()
 
-            best_metrics["recall_macro"] = recall_macro_list[-1].detach().item()
-            best_metrics["recall_micro"] = recall_micro_list[-1].detach().item()
-            best_metrics["recall_weighted"] = recall_weighted_list[-1].detach().item()
+            best_metrics_v2["recall_macro"] = recall_macro_list[-1].detach().item()
+            best_metrics_v2["recall_micro"] = recall_micro_list[-1].detach().item()
+            best_metrics_v2["recall_weighted"] = recall_weighted_list[-1].detach().item()
 
     pred_for_top_k = torch.zeros(preds.shape, dtype=float)  
     labels_for_top_k = torch.zeros(preds.shape,  dtype=float)  
@@ -1053,46 +1068,55 @@ def test_predictons(preds, test_dataset_labels, dir_name,
                                                grnti_mapping_dict_true_numbers.items()}
     
 
-    df_rubrics = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                    for key in range(n_classes)], 
-                                    "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
-    df_rubrics.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "top_k_№_F1_sorted_by_№.csv",
-                                                   index=False) 
-
-    # df_rubrics.sort_values(by=['F1'], 
-    #                        ascending=False).to_csv(dir_name + "top_k_№_F1_sorted_by_F1.csv", 
+    # df_rubrics = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                 for key in range(n_classes)], 
+    #                                 "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
+    # df_rubrics.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "top_k_№_F1_sorted_by_№.csv",
     #                                                index=False) 
 
-    df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                        for key in range(n_classes)], 
-                                        "Precision":torch.round(multilabel_precision_none_res, 
-                                                                decimals=2)})
-    df_rubrics_precision.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "top_k_№_Precision_sorted_by_№.csv",
-                                                   index=False) 
+    # df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                     for key in range(n_classes)], 
+    #                                     "Precision":torch.round(multilabel_precision_none_res, 
+    #                                                             decimals=2)})
+    # df_rubrics_precision.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "top_k_№_Precision_sorted_by_№.csv",
+    #                                                index=False) 
 
-    df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                    for key in range(n_classes)], 
-                                    "Recall":torch.round(multilabel_recall_none_res, 
-                                                            decimals=2)})
-    df_rubrics_recall.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "top_k_№_Recall_sorted_by_№.csv",
-                                                   index=False) 
+    # df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                                 for key in range(n_classes)], 
+    #                                 "Recall":torch.round(multilabel_recall_none_res, 
+    #                                                         decimals=2)})
+    # df_rubrics_recall.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "top_k_№_Recall_sorted_by_№.csv",
+    #                                                index=False) 
 
 
-    df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-                                for key in range(n_classes)], 
-                                "TP":mulitlabel_stat_scores_none_res[:, 0],
-                                "FP":mulitlabel_stat_scores_none_res[:, 1],
-                                "TN":mulitlabel_stat_scores_none_res[:, 2],
-                                "FN":mulitlabel_stat_scores_none_res[:, 3]})
+    # df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
+    #                             for key in range(n_classes)], 
+    #                             "TP":mulitlabel_stat_scores_none_res[:, 0],
+    #                             "FP":mulitlabel_stat_scores_none_res[:, 1],
+    #                             "TN":mulitlabel_stat_scores_none_res[:, 2],
+    #                             "FN":mulitlabel_stat_scores_none_res[:, 3]})
     
-    df_rubrics_stats.sort_values(by=['№'], 
-                           ascending=True).to_csv(dir_name + "top_k_№_stats_sorted_by_№.csv",
-                                                   index=False) 
+    # df_rubrics_stats.sort_values(by=['№'], 
+    #                        ascending=True).to_csv(dir_name + "top_k_№_stats_sorted_by_№.csv",
+    #                                                index=False) 
    
-   
+    df_rubrics_f1_precision_recall_stats = pd.DataFrame({
+        "№": [grnti_mapping_dict_true_numbers_reverse[key] for key in range(n_classes)], 
+        "F1": torch.round(multilabel_f1_score_none_res, decimals=2),
+        "Precision":torch.round(multilabel_precision_none_res, decimals=2),
+        "Recall":torch.round(multilabel_recall_none_res, decimals=2),
+        "TP":mulitlabel_stat_scores_none_res[:, 0],
+        "FP":mulitlabel_stat_scores_none_res[:, 1],
+        "TN":mulitlabel_stat_scores_none_res[:, 2],
+        "FN":mulitlabel_stat_scores_none_res[:, 3]}).sort_values(by=['№'], ascending=True)
+
+    df_rubrics_f1_precision_recall_stats.to_csv(
+        dir_name + "top_K_№_F1_Precision_Recall_Stats.csv",
+        index=False)
+
     preds_best_treshold = torch.sum(preds >= 1e-8, axis = 1)
     
     preds_best_treshold_no_zeros_sum =  torch.sum(preds_best_treshold > 0.99)
@@ -1171,5 +1195,9 @@ def test_predictons(preds, test_dataset_labels, dir_name,
                     bbox_inches='tight')
     plt.close()
 
-    with open(dir_name + "best_metrics_top_k.json", "w") as outfile:
-        json.dump(best_metrics, outfile)
+
+    pd.DataFrame.from_dict([best_metrics_v1, best_metrics_v2]).to_csv(
+        dir_name + "best_metrics.csv",
+        index=False)
+    # with open(dir_name + "best_metrics_top_k.json", "w") as outfile:
+    #     json.dump(best_metrics, outfile)
