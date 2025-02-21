@@ -531,21 +531,29 @@ def prepair_model(n_classes,
                                                                problem_type="multi_label_classification",
                                                                num_labels=n_classes)
     print(model)
-    # for param in model.parameters():
-    #     param.requires_grad = False
+
+    for name, param in zip(model.state_dict().items(), model.parameters()):
+        if name[0] in ["bert.pooler.dense.weight",
+                    "bert.pooler.dense.bias",
+                    "classifier.weight",
+                    "classifier.bias"]:
+            param.requires_grad = True
+        else:
+            param.requires_grad = False
+    
     # lora для модели
-    # config = LoraConfig(
-    #     r=r,
-    #     lora_alpha=lora_alpha,
-    #     lora_dropout=lora_dropout,
-    #     bias="none",
-    #     target_modules= ["query", "key"],
-    #     task_type=TaskType.SEQ_CLS,
-    #     inference_mode=False,
-    #     modules_to_save=['classifier.bias', 'classifier.weight']#["classifier"]
-    # )
-    # model_peft = get_peft_model(model, config)
-    # model_peft.print_trainable_parameters()
+    config = LoraConfig(
+        r=r,
+        lora_alpha=lora_alpha,
+        lora_dropout=lora_dropout,
+        bias="none",
+        target_modules= ["query", "key"],
+        task_type=TaskType.SEQ_CLS,
+        inference_mode=False,
+        modules_to_save=['classifier', 'bert.pooler']#["classifier"]
+    )
+    model_peft = get_peft_model(model, config)
+    model_peft.print_trainable_parameters()
 
 
     return model
