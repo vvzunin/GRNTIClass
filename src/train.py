@@ -532,14 +532,14 @@ def prepair_model(n_classes,
                                                                num_labels=n_classes)
     print(model)
 
-    for name, param in zip(model.state_dict().items(), model.parameters()):
-        if name[0] in ["bert.pooler.dense.weight",
-                    "bert.pooler.dense.bias",
-                    "classifier.weight",
-                    "classifier.bias"]:
-            param.requires_grad = True
-        else:
-            param.requires_grad = False
+    #for name, param in zip(model.state_dict().items(), model.parameters()):
+        #if name[0] in ["bert.pooler.dense.weight",
+                    #"bert.pooler.dense.bias",
+                    #"classifier.weight",
+                    #"classifier.bias"]:
+            #param.requires_grad = True
+        #else:
+            #param.requires_grad = False
     
     # lora для модели
     config = LoraConfig(
