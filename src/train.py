@@ -532,6 +532,7 @@ def prepair_model(n_classes,
                                                                num_labels=n_classes)
     print(model)
 
+    # not need
     #for name, param in zip(model.state_dict().items(), model.parameters()):
         #if name[0] in ["bert.pooler.dense.weight",
                     #"bert.pooler.dense.bias",
