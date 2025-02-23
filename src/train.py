@@ -539,7 +539,7 @@ def prepair_model(n_classes,
                     #"classifier.weight",
                     #"classifier.bias"]:
             #param.requires_grad = True
-        #else:
+        #else: 111
             #param.requires_grad = False
     
     # lora для модели
