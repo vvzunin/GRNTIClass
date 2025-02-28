@@ -33,16 +33,17 @@ def prepair_model(
 def prepair_data_level1(file_path, format="multidoc"):
   if format == "multidoc":
     df_test = pd.read_csv(
-      file_path, sep="\t", encoding="cp1251", on_bad_lines="skip", index_col="id"
+      file_path, sep="\t", encoding="cp1251", on_bad_lines="error", index_col="id"
     )
+    df_test = df_test.fillna("")
     df_test["text"] = (
       df_test["title"].apply(lambda x: x + " [SEP] ") + df_test["body"]
     )
     df_test["text"] = (
       df_test["text"].apply(lambda x: str(x) + " [SEP] ") + df_test["keywords"]
     )
-    df_test = df_test.dropna(subset=["text"], axis=0)
     df_test = df_test.drop(columns=["title", "keywords", "body"])
+    df_test = df_test.dropna(subset=["text"], axis=0)
   elif format == "plain":
     text = open(file_path, "r", encoding="cp1251").readlines()
     text = "".join(text)
