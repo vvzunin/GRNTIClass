@@ -30,10 +30,10 @@ def prepair_model(
   sys.stdout = old_stdout 
   return model
 
-def prepair_data_level1(file_path, format="multidoc"):
+def prepair_data_level1(file_path, format="multidoc", encoding="cp1251"):
   if format == "multidoc":
     df_test = pd.read_csv(
-      file_path, sep="\t", encoding="cp1251", on_bad_lines="error", index_col="id"
+      file_path, sep="\t", encoding=encoding, on_bad_lines="error", index_col="id"
     )
     df_test = df_test.fillna("")
     df_test["text"] = (
@@ -45,7 +45,7 @@ def prepair_data_level1(file_path, format="multidoc"):
     df_test = df_test.drop(columns=["title", "keywords", "body"])
     df_test = df_test.dropna(subset=["text"], axis=0)
   elif format == "plain":
-    text = open(file_path, "r", encoding="cp1251").readlines()
+    text = open(file_path, "r", encoding=encoding).readlines()
     text = "".join(text)
     text = text.replace("\n", " ")
     df_test = pd.DataFrame({"text": text, "correct": "###"}, index=["#"])
@@ -211,7 +211,7 @@ def toRubrics(path, preds, level = 1, threshold = 0.5):
     list_true_numbers_GRNTI.append(list_numbers)
   return list_true_numbers_GRNTI
 
-def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False):
+def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False, encoding="cp1251"):
   df = pd.DataFrame(columns=['result', 'rubricator', 'language', 'threshold', 'version', 'normalize', 'correct'])
   df.index.name='id'
   indexes = dataset.index.tolist()
@@ -226,4 +226,4 @@ def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False):
         k.append('{}-{:1.5f}'.format(key, value))
       res = '\\'.join(k)
     df.loc[indexes[i]] = [res, args['level'], args['language'], args['threshold'], prog['version'], args['normalisation'], dataset.iloc[i]['correct']]
-  df.to_csv(args['outFile'], sep='\t', mode='a', header=header, encoding='cp1251')
+  df.to_csv(args['outFile'], sep='\t', mode='a', header=header, encoding=encoding)

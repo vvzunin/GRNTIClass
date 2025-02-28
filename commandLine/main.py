@@ -1,6 +1,6 @@
 prog = {
   'name': 'GRNTIClass',
-  'version': '1.2.2'
+  'version': '1.3.0'
 }
 
 description = {
@@ -43,16 +43,122 @@ mesages = {
   "badFlag": {
     "ru": "%s Флаг %s не поддерживает значение %s",
     "en": "%s Flag %s is not supported value %s"
+  },
+  "badConfig": {
+    "ru": "%s Конфиг файл не найден или недоступен",
+    "en": "%s Config file not found or unavailable"
   }
 }
 
 import os
 
+fileEncodings = ['ascii',
+ 'big5',
+ 'big5hkscs',
+ 'cp037',
+ 'cp273',
+ 'cp424',
+ 'cp437',
+ 'cp500',
+ 'cp720',
+ 'cp737',
+ 'cp775',
+ 'cp850',
+ 'cp852',
+ 'cp855',
+ 'cp856',
+ 'cp857',
+ 'cp858',
+ 'cp860',
+ 'cp861',
+ 'cp862',
+ 'cp863',
+ 'cp864',
+ 'cp865',
+ 'cp866',
+ 'cp869',
+ 'cp874',
+ 'cp875',
+ 'cp932',
+ 'cp949',
+ 'cp950',
+ 'cp1006',
+ 'cp1026',
+ 'cp1125',
+ 'cp1140',
+ 'cp1250',
+ 'cp1251',
+ 'cp1252',
+ 'cp1253',
+ 'cp1254',
+ 'cp1255',
+ 'cp1256',
+ 'cp1257',
+ 'cp1258',
+ 'euc_jp',
+ 'euc_jis_2004',
+ 'euc_jisx0213',
+ 'euc_kr',
+ 'gb2312',
+ 'gbk',
+ 'gb18030',
+ 'hz',
+ 'iso2022_jp',
+ 'iso2022_jp_1',
+ 'iso2022_jp_2',
+ 'iso2022_jp_2004',
+ 'iso2022_jp_3',
+ 'iso2022_jp_ext',
+ 'iso2022_kr',
+ 'latin_1',
+ 'iso8859_2',
+ 'iso8859_3',
+ 'iso8859_4',
+ 'iso8859_5',
+ 'iso8859_6',
+ 'iso8859_7',
+ 'iso8859_8',
+ 'iso8859_9',
+ 'iso8859_10',
+ 'iso8859_11',
+ 'iso8859_13',
+ 'iso8859_14',
+ 'iso8859_15',
+ 'iso8859_16',
+ 'johab',
+ 'koi8_r',
+ 'koi8_t',
+ 'koi8_u',
+ 'kz1048',
+ 'mac_cyrillic',
+ 'mac_greek',
+ 'mac_iceland',
+ 'mac_latin2',
+ 'mac_roman',
+ 'mac_turkish',
+ 'ptcp154',
+ 'shift_jis',
+ 'shift_jis_2004',
+ 'shift_jisx0213',
+ 'utf_32',
+ 'utf_32_be',
+ 'utf_32_le',
+ 'utf_16',
+ 'utf_16_be',
+ 'utf_16_le',
+ 'utf_7',
+ 'utf_8',
+ 'utf_8_sig']
+
 models = {
-  "lora": {
-    1: os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level1",
-    2: os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level2_with_labels",
-    3: ""
+  "baseModel": {
+    "1": os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level1",
+    "2": os.path.dirname(os.path.abspath(__file__)) + "\\..\\models\\bert2\\bert_peft_level2_with_labels",
+    "3": "",
+    "desc": {
+      "ru": "Модель на основе LORA",
+      "en": "LORA based model"
+    }
   }
 }
 arguments = {
@@ -81,6 +187,32 @@ arguments = {
     },
     "metavar": "output_file.csv",
     "dest": "outFile"
+  },
+  "ei": {
+    "name": "-ei",
+    "default": "cp1251",
+    "type": str,
+    "choices": fileEncodings,
+    "required": False,
+    "help": {
+      "ru": "Кодировка входного файла (по-умолчанию: %(default)s)",
+      "en": "Input file encoding (default: %(default)s)"
+    },
+    "metavar": "inEncoding",
+    "dest": "inEncoding"
+  },
+  "eo": {
+    "name": "-eo",
+    "default": "cp1251",
+    "type": str,
+    "choices": fileEncodings,
+    "required": False,
+    "help": {
+      "ru": "Кодировка выходного файла (по-умолчанию: %(default)s)",
+      "en": "Output file encoding (default: %(default)s)"
+    },
+    "metavar": "outEncoding",
+    "dest": "outEncoding"
   },
   "id": {
     "name": "-id",
@@ -167,12 +299,25 @@ arguments = {
     "choices": None,
     "required": False,
     "help": {
-      "ru": "Использованием диалогового взаимодействия с программой",
-      "en": "Using dialogue interaction with the program"
+      "ru": "Использованием диалогового взаимодействия с программой (по-умолчанию: %(default)s)",
+      "en": "Using dialogue interaction with the program (default: %(default)s)"
     },
     "metavar": "dialogue",
     "dest": "dialogue"
   },
+  "c": {
+    "name": "-c",
+    "default": "config.json",
+    "type": str,
+    "choices": None,
+    "required": False,
+    "help": {
+      "ru": "Путь к конфигурационному файлу (по-умолчанию: %(default)s)",
+      "en": "Path to configuration file (default: %(default)s)"
+    },
+    "metavar": "config.json",
+    "dest": "config"
+  }
 }
 
 lang = "ru"
@@ -188,7 +333,7 @@ def get_user_inputs():
     for arg_key, arg_info in args.items():
         prompt = (f"{arg_info['help'][lang]}: ") % {'default': arg_info['default']}
         user_input = input(prompt)
-        if user_input == "":
+        if user_input == "":  
             user_input = arg_info['default']
         user_args[arg_info['dest']] = arg_info['type'](user_input)
     return user_args
@@ -218,13 +363,30 @@ def parseArgs():
 def dataSelection(preds, threshold):
   return preds[preds > threshold]
 
+def loadConfig(configPath):
+  import json
+  try:
+    file = open(configPath, 'r', encoding="cp1251")
+    try:
+      data = json.load(file)
+      return data
+    finally:
+      file.close()
+  except IOError:
+    printInfo(mesages["badConfig"], datetime.datetime.now().strftime(datetimeFormatOutput))
+    quit()
+  return None
+
 if __name__ == "__main__":
   import datetime
   start = datetime.datetime.now()
   printInfo(mesages["start"], start.strftime(datetimeFormatOutput))
-
+  
   # Запрашиваем параметры у пользователя
   user_args = parseArgs()
+  config = loadConfig(user_args["config"])
+  models.update(config['models'])
+  config['models'] = models
 
   from prediction import prepair_model, prepair_data_level1, prepair_data_level2, \
       prepair_dataset, make_predictions, save_rubrics, toRubrics
@@ -234,13 +396,13 @@ if __name__ == "__main__":
 
   printInfo(mesages["libs"], datetime.datetime.now().strftime(datetimeFormatOutput))
 
-  model1 = None if models[user_args['modelType']][1] == "" else prepair_model(n_classes=36, lora_model_path=models[user_args['modelType']][1])
+  model1 = None if models[user_args['modelType']]["1"] == "" else prepair_model(n_classes=36, lora_model_path=models[user_args['modelType']]["1"])
   model2 = None
   model3 = None
   if ((user_args['level'] == "RGNTI2") or (user_args['level'] == "RGNTI3")):
-      model2 = None if models[user_args['modelType']][2] == "" else prepair_model(n_classes=246, lora_model_path=models[user_args['modelType']][2])
+      model2 = None if models[user_args['modelType']]["2"] == "" else prepair_model(n_classes=246, lora_model_path=models[user_args['modelType']]["2"])
   if (user_args['level'] == "RGNTI3"):
-      model3 = None if models[user_args['modelType']][3] == "" else prepair_model(n_classes=0, lora_model_path=models[user_args['modelType']][3])
+      model3 = None if models[user_args['modelType']]["3"] == "" else prepair_model(n_classes=0, lora_model_path=models[user_args['modelType']]["3"])
 
   if ((model1 is None) or
       ((model2 is None) and ((user_args['level'] == "RGNTI2") or (user_args['level'] == "RGNTI3"))) or
@@ -249,7 +411,7 @@ if __name__ == "__main__":
       quit()
 
   printInfo(mesages["startPredict"], datetime.datetime.now().strftime(datetimeFormatOutput))
-  df_test = prepair_data_level1(user_args['inFile'], format=user_args['format'])
+  df_test = prepair_data_level1(user_args['inFile'], format=user_args['format'], encoding=user_args["inEncoding"])
   device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
   printInfo(mesages["device"], (datetime.datetime.now().strftime(datetimeFormatOutput), device))
 
@@ -262,18 +424,18 @@ if __name__ == "__main__":
       predictions_level1 = make_predictions(model1, dataset_loader, device=device)
       if (user_args['level'] == "RGNTI1"):
           predictions_level1 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level1, 1, user_args['threshold'])
-          save_rubrics(df_test.iloc[[i]], predictions_level1, user_args, prog, i == 0)
+          save_rubrics(df_test.iloc[[i]], predictions_level1, user_args, prog, i == 0, user_args["outEncoding"])
       else:
           df_test2 = prepair_data_level2(os.path.dirname(os.path.abspath(__file__)), df_test.iloc[[i]], predictions_level1, user_args['threshold'])
           dataset_loader2 = prepair_dataset(df_test2)
           predictions_level2 = make_predictions(model2, dataset_loader2, device=device)
           if (user_args['level'] == "RGNTI2"):
               predictions_level2 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level2, 2, user_args['threshold'])
-              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
+              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0, user_args["outEncoding"])
           else:
               printInfo(mesages["notComplete"], datetime.datetime.now().strftime(datetimeFormatOutput))
               predictions_level2 = toRubrics(os.path.dirname(os.path.abspath(__file__)), predictions_level2, 2, user_args['threshold'])
-              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0)
+              save_rubrics(df_test2, predictions_level2, user_args, prog, i == 0, user_args["outEncoding"])
 
   del model1
   del model2

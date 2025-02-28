@@ -1,0 +1,13 @@
+{
+  "models": {
+    "lora": {
+      "1": "..\\models\\bert2\\bert_peft_level1",
+      "2": "..\\models\\bert2\\bert_peft_level2_with_labels",
+      "3": "",
+      "desc": {
+        "ru": "Модель на основе LORA",
+        "en": "LORA based model"
+      }
+    }
+  }
+}
