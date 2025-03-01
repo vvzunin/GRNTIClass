@@ -711,6 +711,13 @@ def test_predictons(preds, test_dataset_labels, dir_name,
         'align': 'center',
         'valign': 'vcenter',
     })
+    merge_format_not_bold_small = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'font_size': 9
+    })
+
     merge_format_empty = workbook.add_format({
         'border': 0,
         'align': 'center',
@@ -1023,13 +1030,13 @@ def test_predictons(preds, test_dataset_labels, dir_name,
             worksheet.write_blank(first_index + 6 + df_rubrics_f1_precision_recall_stats.shape[0],
                                   column, None, merge_format_empty)
     worksheet.merge_range(0, 0, 0, 2,
-                        "Кол-во Reject, Empty, статей для тестового датасета",
+                        "Количество ответов REJECT, EMPTY и документов",
                         merge_format)
     
     for index, number_number_name in enumerate(zip([reject_number, empty_number, test_el_number],
-                                                    ["Кол-во Reject", "Кол-во Empty", "Кол-во статей"])):
+                                                    ["кол-во ответов REJECT", "кол-во ответов EMPTY", "кол-во документов"])):
         number, number_name = number_number_name
-        worksheet.write_string(1, index, number_name, merge_format_not_bold)
+        worksheet.write_string(1, index, number_name, merge_format_not_bold_small)
         worksheet.write(2, index, number, merge_format_not_bold)
 
     workbook.close()
