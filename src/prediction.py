@@ -37,6 +37,8 @@ def prepair_model(n_classes, lora_model_path,
     model.add_adapter(peft_config)
     model.enable_adapters()
 
+    print((model.print_trainable_parameters()))
+
         
     # PeftConfig.from_pretrained(lora_model_path)
     
