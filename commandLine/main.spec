@@ -10,7 +10,7 @@ a = Analysis(
             ('GRNTI_1_ru.json', '.'), 
             ('GRNTI_2_ru.json', '.'),
             ('config.json', '.'),
-            ('../models/bert2', 'models/bert2'),
+            ('models/bert2', 'models/bert2'),
             ('doc', 'doc'),
             ('examples', 'examples')],
     hiddenimports=[],
@@ -18,7 +18,7 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    onedir=True
+    onedir=False
 )
 pyz = PYZ(a.pure)
 

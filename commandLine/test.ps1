@@ -1,0 +1,1 @@
+(Measure-Command { python .\main.py -i examples\test_ru.csv -o resMultidoc500.csv -id RGNTI2 -f multidoc -l ru -t 0.1 -p 10 -s True | Out-Default }).ToString()
