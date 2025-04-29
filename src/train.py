@@ -431,7 +431,283 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
 
     return df_trunc2, df_test_trunc2, n_classes, n_classes2
 
+def get_grnti1_2_3_BERT_dataframes(file_path, 
+                                   number_of_delteted_values, 
+                                 minimal_number_of_elements_RGNTI2,
+                                 minimal_number_of_elements_RGNTI3,
+                                 minimal_number_of_words,
+                                 dir_name=None, 
+                                 change_codes=False,
+                                 grnti_folder = ""):
+    df = pd.read_csv(file_path + "/train_ru.csv", sep='\t', encoding='cp1251')
+    df = df.loc[df['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])] # Пропускаем строки без класса
+    df_test = pd.read_csv(file_path + "/test_ru.csv", sep='\t', encoding='cp1251',
+                        on_bad_lines='skip')
+    df_test = df_test.loc[df_test['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])]
+    df['target'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+",el)[0]
+                                                for el in x.split('\\')]))) # Для каждой строки извлекаем значения ГРНТИ 1 уровня
 
+    df_test['target'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+",el)[0]
+                                                for el in x.split('\\')])))
+    df['target_2'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+",el)[0]
+                                                for el in x.split('\\')])))
+    df_test['target_2'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+",el)[0]
+                                                for el in x.split('\\')])))
+
+    # Добавляем извлечение 3-го уровня ГРНТИ
+    df['target_3'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+.\d+",el)[0]
+                                                for el in x.split('\\') if re.findall("\d+.\d+.\d+",el)])))
+    df_test['target_3'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+.\d+",el)[0]
+                                                for el in x.split('\\') if re.findall("\d+.\d+.\d+",el)])))
+
+
+    df_trunc = df.copy()
+
+    df_test_trunc = df_test.copy()
+    if number_of_delteted_values > 0:
+
+        list_of_few_values = pd.Series(np.concatenate(
+            df['target'].values)).value_counts()[:-number_of_delteted_values].index.to_list() 
+        df_trunc['target'] = df['target'].apply(lambda x: list(set(x) & set(list_of_few_values)))
+        df_trunc = df_trunc[df_trunc['target'].apply(lambda x: x != []) ]
+
+        df_test_trunc["target"] = df_test['target'].apply(lambda x: list(set(x) & set(list_of_few_values)))
+
+        df_test_trunc["target"] = df_test_trunc["target"].apply(lambda x: x if x!=[] else ["no class"])
+
+
+    unique_vals = np.unique(np.concatenate(df_trunc['target'].values))
+
+    list_of_proper_values_target_2 = []
+    list_of_inproper_values_target_2 = []
+    print(f"Удаление элементов второго уровня, количество которых меньше {minimal_number_of_elements_RGNTI2}")
+    print(df_trunc.head())
+    for target_2_val in tqdm(unique_vals):
+        needed_taget2 = df_trunc['target_2'].apply(lambda x: [re.findall(f"{target_2_val}.\d+",el)[0] for el 
+                                                    in x if re.findall(f"{target_2_val}.\d+",el)])
+        
+        concatenated_list_target2 = pd.Series(np.concatenate(np.array([el for el
+                                                    in needed_taget2.values.tolist() if el], dtype="object"))).value_counts()
+        list_of_proper_values_target_2.extend(concatenated_list_target2[concatenated_list_target2 >= minimal_number_of_elements_RGNTI2].\
+                                            index.to_list())
+        list_of_inproper_values_target_2.extend(concatenated_list_target2[concatenated_list_target2 < minimal_number_of_elements_RGNTI2].\
+                                            index.to_list())
+        
+    set_of_proper_values_target_2 = set(list_of_proper_values_target_2)
+    df_trunc2 = df_trunc.copy()
+
+    df_trunc2_deleted = df_trunc['target_2'].apply(lambda x: list(set(x) -
+                                                    set_of_proper_values_target_2))
+    df_trunc2_deleted = pd.Series([el for el in df_trunc2_deleted if el != []])
+
+    df_trunc2['target_2'] = df_trunc['target_2'].apply(lambda x: list(set(x) &
+                                                        set_of_proper_values_target_2))
+    df_trunc2 = df_trunc2[df_trunc2['target_2'].apply(lambda x: x != []) ]
+    ###################
+
+
+    # Обработка тестового датасета для 2-го уровня
+    df_test_trunc2 = df_test_trunc.copy()
+
+    # Аналогичная обработка для 3-го уровня ГРНТИ
+    list_of_proper_values_target_3 = []
+    list_of_inproper_values_target_3 = []
+    print(f"Удаление элементов третьего уровня, количество которых меньше {minimal_number_of_elements_RGNTI3}")
+    for target_2_val in tqdm(set_of_proper_values_target_2):
+        needed_taget3 = df_trunc2['target_3'].apply(lambda x: [re.findall(f"{target_2_val}.\d+",el)[0] for el 
+                                                in x if re.findall(f"{target_2_val}.\d+",el)])
+        
+        # Filter out empty lists before concatenation
+        non_empty_lists = [el for el in needed_taget3.values.tolist() if el]
+        if non_empty_lists:  # Only proceed if there are elements to concatenate
+            concatenated_list_target3 = pd.Series(np.concatenate(non_empty_lists)).value_counts()
+            list_of_proper_values_target_3.extend(concatenated_list_target3[concatenated_list_target3 >= minimal_number_of_elements_RGNTI3].\
+                                        index.to_list())
+            list_of_inproper_values_target_3.extend(concatenated_list_target3[concatenated_list_target3 < minimal_number_of_elements_RGNTI3].\
+                                        index.to_list())
+        
+    set_of_proper_values_target_3 = set(list_of_proper_values_target_3)
+    df_trunc3 = df_trunc2.copy()
+
+    df_trunc3_deleted = df_trunc2['target_3'].apply(lambda x: list(set(x) -
+                                                set_of_proper_values_target_3))
+    df_trunc3_deleted = pd.Series([el for el in df_trunc3_deleted if el != []])
+
+    df_trunc3['target_3'] = df_trunc2['target_3'].apply(lambda x: list(set(x) &
+                                                    set_of_proper_values_target_3))
+    df_trunc3 = df_trunc3[df_trunc3['target_3'].apply(lambda x: x != []) ]
+
+    #код для графика 3 (аналогично графику 2, но для 3-го уровня)
+    if minimal_number_of_elements_RGNTI3 > 1:
+        fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+        deleted_values_count = pd.Series(np.concatenate(df_trunc3_deleted.values)).value_counts()
+        deleted_values_count = pd.DataFrame({'RGNTI 3':deleted_values_count.index, 
+                    'Количество элементов':deleted_values_count.values})
+
+        print(deleted_values_count.shape)
+
+        sns_plot1 = sns.barplot(y = "RGNTI 3", x = "Количество элементов", data = deleted_values_count)
+
+        sns_plot1.tick_params(labelsize=6)
+        plt.xticks(fontsize=10)
+        
+        plt.tight_layout()
+        plt.title("Количество удаляемых текстов из датасета для 3-ого уровня ГРНТИ")
+        if dir_name:
+            plt.savefig(dir_name + "Количество удаляемых текстов из датасета для 3-ого уровня ГРНТИ.png",
+                        bbox_inches='tight')
+    else:
+        print("Элементы не удаляются из датасета по RGNTI 3")
+
+    fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+    residual_values = pd.Series(np.concatenate(df_trunc3['target_3'].values)).value_counts()
+    residual_values = pd.DataFrame({'RGNTI 3': residual_values.index, 
+                'Количество элементов': residual_values.values})
+    print(residual_values.shape)
+
+    sns_plot2 = sns.barplot(y = "RGNTI 3", x = "Количество элементов", data = residual_values)
+
+    sns_plot2.tick_params(labelsize=6)
+    plt.xticks(fontsize=10)
+
+    plt.tight_layout()
+    plt.title("Количество элементов, остающихся в датасете для 3-ого уровня ГРНТИ")
+    if dir_name:
+        plt.savefig(dir_name + "Количество элементов, остающихся в датасете для 3-ого уровня ГРНТИ.png",
+                    bbox_inches='tight')
+
+    df_test_trunc3 = df_test_trunc2
+
+    union_of_targets = set(unique_vals)
+    coding =  range(len(union_of_targets))
+    dict_Vinit_code_int = dict(zip(union_of_targets, coding))
+
+    if change_codes:
+        with open(grnti_folder + "my_grnti1_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int, outfile)
+
+    with open(grnti_folder + 'my_grnti1_int.json', "r") as code_file:
+        grnti_mapping_dict = json.load(code_file) # Загружаем файл с кодами 
+    n_classes = len(grnti_mapping_dict)
+
+    #Уровень 2
+    unique_vals_level2 = np.unique(np.concatenate(df_trunc3['target_2'].values))
+    union_of_targets2 = set(unique_vals_level2)
+    coding2 =  range(len(union_of_targets2))
+    dict_Vinit_code_int2 = dict(zip(union_of_targets2, coding2))
+    if change_codes:
+        with open(grnti_folder + "my_grnti2_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int2, outfile)
+
+    with open(grnti_folder + 'my_grnti2_int.json', "r") as code_file:
+        grnti_mapping_dict2 = json.load(code_file) # Загружаем файл с кодами 
+    n_classes2 = len(grnti_mapping_dict2)
+
+    #Уровень 3
+    unique_vals_level3 = np.unique(np.concatenate(df_trunc3['target_3'].values))
+    union_of_targets3 = set(unique_vals_level3)
+    coding3 =  range(len(union_of_targets3))
+    dict_Vinit_code_int3 = dict(zip(union_of_targets3, coding3))
+    if change_codes:
+        with open(grnti_folder + "my_grnti3_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int3, outfile)
+
+    with open(grnti_folder + 'my_grnti3_int.json', "r") as code_file:
+        grnti_mapping_dict3 = json.load(code_file) # Загружаем файл с кодами 
+    n_classes3 = len(grnti_mapping_dict3)
+
+    #Кодируем классы тренировочного датасета
+    df_trunc_result_multiclass_targets = []
+    for list_el in df_trunc3['target']:
+        classes_zero = [0] * n_classes
+        for index in list_el:
+            if index in grnti_mapping_dict.keys():
+                classes_zero[grnti_mapping_dict[index]] = 1
+
+        df_trunc_result_multiclass_targets.append(classes_zero)
+
+    #Кодируем классы тестового датасета
+    df_test_trunc_result_multiclass_targets = []
+    for list_el in df_test_trunc3['target']:
+        classes_zero = [0] * n_classes
+        for index in list_el:
+            if index in grnti_mapping_dict.keys():
+                classes_zero[grnti_mapping_dict[index]] = 1
+
+        df_test_trunc_result_multiclass_targets.append(classes_zero)
+    df_trunc3['target_coded'] = df_trunc_result_multiclass_targets
+    df_test_trunc3['target_coded'] = df_test_trunc_result_multiclass_targets
+
+    #Кодируем классы тренировочного датасета level2
+    df_trunc_result_multiclass_targets2 = []
+    for list_el in df_trunc3['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
+
+        df_trunc_result_multiclass_targets2.append(classes_zero)
+
+    #Кодируем классы тестового датасета level2
+    df_test_trunc_result_multiclass_targets2 = []
+    for list_el in df_test_trunc3['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
+
+        df_test_trunc_result_multiclass_targets2.append(classes_zero)
+
+    df_trunc3['target_coded2'] = df_trunc_result_multiclass_targets2
+    df_test_trunc3['target_coded2'] = df_test_trunc_result_multiclass_targets2
+
+    #Кодируем классы тренировочного датасета level3
+    df_trunc_result_multiclass_targets3 = []
+    for list_el in df_trunc3['target_3']:
+        classes_zero = [0] * n_classes3
+        for index in list_el:
+            if index in grnti_mapping_dict3.keys():
+                classes_zero[grnti_mapping_dict3[index]] = 1
+
+        df_trunc_result_multiclass_targets3.append(classes_zero)
+
+    #Кодируем классы тестового датасета level3
+    df_test_trunc_result_multiclass_targets3 = []
+    for list_el in df_test_trunc3['target_3']:
+        classes_zero = [0] * n_classes3
+        for index in list_el:
+            if index in grnti_mapping_dict3.keys():
+                classes_zero[grnti_mapping_dict3[index]] = 1
+
+        df_test_trunc_result_multiclass_targets3.append(classes_zero)
+
+    df_trunc3['target_coded3'] = df_trunc_result_multiclass_targets3
+    df_test_trunc3['target_coded3'] = df_test_trunc_result_multiclass_targets3
+
+    ############################
+    df_trunc3['text'] = (df_trunc3['title'].apply(lambda x:x+' [SEP] ') 
+                    + df_trunc3['ref_txt'])
+    df_test_trunc3['text'] = (df_test_trunc3['title'].apply(lambda x:x+' [SEP] ')
+                                                + df_test_trunc3['ref_txt'])
+
+    df_trunc3['text'] = (df_trunc3['text'].apply(lambda x:str(x)+' [SEP] ' ) + df_trunc3['kw_list'])
+
+    df_test_trunc3['text'] = df_test_trunc3['text'].apply(lambda x:str(x)+
+                                                        ' [SEP] ') + df_test_trunc3['kw_list']
+
+    df_trunc3 = df_trunc3.dropna(subset=['text'], axis=0)
+    df_test_trunc3 = df_test_trunc3.dropna(subset=['text'], axis=0)
+    df_trunc3 = df_trunc3[df_trunc3['text'].apply(lambda x: len(x.split()) > minimal_number_of_words)]
+
+    print("Доля оставшихся элементов в тренировочном датасете: ", df_trunc3.shape[0] / df.shape[0])
+
+    return df_trunc3, df_test_trunc3, n_classes, n_classes2, n_classes3
 
 def get_encoded_dataset(dataset, tokenizer, 
                                          max_length):
@@ -522,7 +798,6 @@ def prepair_datasets(df, df_test, n_classes, level,
     
     collate_fn = DataCollatorWithPadding(tokenizer=tokenizer)
     return dataset_train, dataset_valid, dataset_test, tokenizer, collate_fn, weights_per_class
-        # loss_fuction_for_multiclass_classification 
 
 def prepair_model(n_classes,
                   pre_trained_model_name='DeepPavlov/rubert-base-cased',
