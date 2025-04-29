@@ -49,6 +49,20 @@ def prepair_data_level1(file_path):
 
     return df_test#, n_classes1
 
+def prepair_data_level1_list_of_text(list_of_text):
+    print("Подготовка данных 1 уровень")
+
+    df_test = pd.DataFrame({"text": list_of_text})
+
+    return df_test
+
+def prepair_data_level2_list_of_text(list_of_text):
+    print("Подготовка данных 1 уровень")
+
+    df_test = pd.DataFrame({"text": list_of_text})
+
+    return df_test#
+
 def prepair_data_level2(df_test, preds):
 
     print("Подготовка данных 2 уровень")
