@@ -8,7 +8,7 @@ import time
 import os
 
 from .prediction import prepair_model, prepair_data_level1, prepair_data_level2, \
-    prepair_dataset, make_predictions, save_rubrics, toRubrics
+    prepair_dataset, make_predictions, toRubrics
 from tqdm import tqdm
 import pandas as pd
 import torch
@@ -25,34 +25,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# async def process_file(file: UploadFile, level1: bool, level2: bool, level3: bool, threshold: float) -> AsyncGenerator[str, None]:
-#     """Асинхронно обрабатывает один файл и генерирует события прогресса"""
-#     try:
-#         content = await file.read()
-        
-#         # Имитация обработки файла с прогрессом
-#         # for progress in [20, 40, 60, 80, 100]:
-#         #     await asyncio.sleep(0.5)  # Имитация работы
-#             # yield json.dumps({
-#             #     "type": "progress",
-#             #     "filename": file.filename,
-#             #     "progress": progress,
-#             #     "message": f"Обработка файла {file.filename} ({progress}%)"
-#             # }) + "\n"
-        
-#         # Генерация результатов
-#         mock_results = await generate_mock_results(level1, level2, level3, threshold)
-#         yield json.dumps({
-#             "type": "result",
-#             "filename": file.filename,
-#             "rubrics": mock_results
-#         }) + "\n"
-#     except Exception as e:
-#         yield json.dumps({
-#             "type": "error",
-#             "filename": file.filename,
-#             "message": str(e)
-#         }) + "\n"
 
 async def generate_mock_results(level1: bool, level2: bool, level3: bool, threshold: float) -> List[dict]:
     """Генерирует моковые результаты с учетом максимального выбранного уровня"""
@@ -103,29 +75,14 @@ async def generate_mock_results(level1: bool, level2: bool, level3: bool, thresh
     # Сортируем по убыванию вероятности
     return sorted(filtered, key=lambda x: x["probability"], reverse=True)
 
-# async def process_files_stream(files: List[UploadFile], level1: bool, level2: bool, level3: bool, threshold: float) -> AsyncGenerator[str, None]:
-#     """Обрабатывает все файлы и генерирует поток событий"""
-#     total_files = len(files)
-    
-#     # Начальное событие
-#     yield json.dumps({
-#         "type": "init",
-#         "total_files": total_files,
-#         "message": f"Начата обработка {total_files} файлов"
-#     }) + "\n"
-    
-#     # Обработка каждого файла
-#     for i, file in enumerate(files, 1):
-#         async for chunk in process_file(file, level1, level2, level3, threshold):
-#             yield chunk
-        
-#         # Событие завершения файла
-#         yield json.dumps({
-#             "type": "file_complete",
-#             "completed": i,
-#             "total": total_files,
-#             "message": f"Завершена обработка файла {i} из {total_files}"
-#         }) + "\n"
+async def get_files_content(files: List[UploadFile]) -> List[str]:
+    contents = []
+    for file in files:
+        content = await file.read()
+        contents.append(content.decode())  # assuming text files; adjust if binary
+        await file.seek(0)  # important: rewind the file for potential future reads
+    return contents
+
 
 @app.post("/classify")
 async def classify_files(
@@ -139,13 +96,17 @@ async def classify_files(
 ) -> StreamingResponse:
     async def event_stream():
         total_files = len(files)
-        
+        print("files", files)
+          # Имитация обработки
+        print("До отправки начального сообщения")
         # Отправляем начальное событие
         yield json.dumps({
             "type": "init",
             "total_files": total_files,
             "message": f"Начата обработка {total_files} файлов"
         }) + "\n"
+        print("После отправки начального сообщения")
+
         max_level = None
 
         if level3:
@@ -160,6 +121,7 @@ async def classify_files(
                 "type": "error",
                 "message": "Не выбран уровень ГРНТИ"
             }) + "\n"
+            return  
 
 
         try:
@@ -167,7 +129,7 @@ async def classify_files(
                             "type": "progress",
                             "filename": "все файлы",
                             "progress": 0,
-                            "message": f"Подготовка данных и моделей ({0}%)",
+                            "message": f"Подготовка данных и моделей (0%)",
                             "completed": 1,
                             "total": total_files
                         }) + "\n"
@@ -175,24 +137,26 @@ async def classify_files(
             print("cwd = ", os.getcwd())
             if max_level ==1:
                 modelType = 'bert_peft_level1_extra'
-                model = prepair_model(n_classes=36, lora_model_path=modelType)
-            else:
+                n_classes = 36
+            elif max_level==2:
                 modelType = 'bert_peft_level2_with_labels_extra'
-                model = prepair_model(n_classes=246, lora_model_path=modelType)
+                n_classes = 246
+            else:
+                modelType = 'bert_peft_level3'
+                n_classes = 1265
 
-            files_loc = ["Что-то по матиматике: уравнения", 
-                    "Что-то по биологии: малекулы",
-                    "Что-то по матиматике: алгебра", 
-                    "Что-то по биологии: днк",
-                    "Что-то по матиматике: прикладная математика", 
-                    "Что-то по биологии: инфузория туфелька",
-                    "Что-то по матиматике: дискретная математика", 
-                    "Что-то по биологии: анатомия человека",
-                    "Что-то по биологии: анатомия жука навозника"]
+            model = prepair_model(n_classes=n_classes, lora_model_path=modelType)
+            print("Начало работы с файлами")
+
+            files_loc = await get_files_content(files)
+            print(f"{files_loc=}")
+    
+            print("Конец работы с файлами")
+    
             dataset_loader = prepair_dataset(pd.DataFrame({"text":files_loc}))
 
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+            print("До 'получение предсказиний'")
             yield json.dumps({
                         "type": "progress",
                         "filename": "все файлы",
@@ -201,12 +165,17 @@ async def classify_files(
                         "completed": 1,
                         "total": total_files
                     }) + "\n"
+            print("После 'получение предсказиний'")
+            print("до make_predictions")
 
             predictions = make_predictions(model, dataset_loader, device=device)
+            print("после make_predictions")
 
-            predictions = toRubrics(predictions, 
-                                        max_level-1 if max_level==3 else max_level, 
+            predictions = toRubrics(predictions, max_level, 
                                         threshold)
+            
+            print("после toRubrics")
+
             sorted_dicts_list = [
                 dict(sorted(dict_for_rubrick.items(),
                             reverse=True,
@@ -244,13 +213,13 @@ async def classify_files(
                                 "total": total_files
                             }) + "\n"
             
-            for i, file in enumerate(files_loc, 1):
+            for i, file in enumerate(files, 1):
                 # Генерация результатов
                 mock_results = sorted_dicts_list_for_return[i-1]#await generate_mock_results(level1, level2, level3, threshold)
                 print(f"{mock_results=}")
                 yield json.dumps({
                     "type": "result",
-                    "filename": f"Файл под номером {i}",
+                    "filename": file.filename,
                     "rubrics": mock_results
                 }) + "\n"
                 
@@ -259,7 +228,7 @@ async def classify_files(
                     "type": "file_complete",
                     "completed": i,
                     "total": total_files,
-                    "message": f"Завершена обработка файла {i} из {len(files_loc)}"
+                    "message": f"Завершена обработка файла {i} из {len(files)}"
                 }) + "\n"
             
             # Финальное событие

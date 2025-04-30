@@ -46,6 +46,8 @@ class API {
                         if (line.trim() === '') continue;
                         
                         try {
+                            console.log("RAW LINE FROM SSE:", line);
+
                             const data = JSON.parse(line);
                             
                             switch(data.type) {
@@ -59,7 +61,8 @@ class API {
                                         data.progress,
                                         data.message,
                                         data.completed + 1,
-                                        totalFiles
+                                        data.total_files
+                                        // totalFiles
                                     );
                                     break;
                                     
