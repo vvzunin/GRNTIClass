@@ -886,9 +886,9 @@ def prepair_compute_metrics(n_classes):
         f1_weighted_09 = multilabel_f1_score_weighted_list[4](preds, labels)
 
         
-        aucroc_micro = multilabel_auroc_micro(preds, labels)
-        aucroc_macro = multilabel_auroc_macro(preds, labels)
-        aucroc_weighted = multilabel_auroc_weighted(preds, labels)
+        # aucroc_micro = multilabel_auroc_micro(preds, labels)
+        # aucroc_macro = multilabel_auroc_macro(preds, labels)
+        # aucroc_weighted = multilabel_auroc_weighted(preds, labels)
 
         return {
             'accuracy_micro_0.5': accuracy_micro,
@@ -914,9 +914,9 @@ def prepair_compute_metrics(n_classes):
             'f1_macro_0.8': f1_macro_09,
             'f1_weighted_0.8': f1_weighted_09,
 
-            "aucroc_micro": aucroc_micro, 
-            "aucroc_macro": aucroc_macro, 
-            "aucroc_weighted": aucroc_weighted
+            # "aucroc_micro": aucroc_micro, 
+            # "aucroc_macro": aucroc_macro, 
+            # "aucroc_weighted": aucroc_weighted
         }
     return compute_metrics
 
