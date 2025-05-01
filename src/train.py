@@ -6,6 +6,8 @@ from tqdm import tqdm
 from tqdm.notebook import tqdm as tqdm2
 import json
 import torch
+import xlsxwriter
+import copy
 from peft import TaskType, LoraConfig, get_peft_model
 from transformers import AutoModelForSequenceClassification,\
     AutoTokenizer, DataCollatorWithPadding, Trainer
@@ -429,7 +431,283 @@ def get_grnti1_2_BERT_dataframes(file_path, number_of_delteted_values,
 
     return df_trunc2, df_test_trunc2, n_classes, n_classes2
 
+def get_grnti1_2_3_BERT_dataframes(file_path, 
+                                   number_of_delteted_values, 
+                                 minimal_number_of_elements_RGNTI2,
+                                 minimal_number_of_elements_RGNTI3,
+                                 minimal_number_of_words,
+                                 dir_name=None, 
+                                 change_codes=False,
+                                 grnti_folder = ""):
+    df = pd.read_csv(file_path + "/train_ru.csv", sep='\t', encoding='cp1251')
+    df = df.loc[df['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])] # Пропускаем строки без класса
+    df_test = pd.read_csv(file_path + "/test_ru.csv", sep='\t', encoding='cp1251',
+                        on_bad_lines='skip')
+    df_test = df_test.loc[df_test['RGNTI'].apply(lambda x: re.findall("\d+",x)!=[])]
+    df['target'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+",el)[0]
+                                                for el in x.split('\\')]))) # Для каждой строки извлекаем значения ГРНТИ 1 уровня
 
+    df_test['target'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+",el)[0]
+                                                for el in x.split('\\')])))
+    df['target_2'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+",el)[0]
+                                                for el in x.split('\\')])))
+    df_test['target_2'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+",el)[0]
+                                                for el in x.split('\\')])))
+
+    # Добавляем извлечение 3-го уровня ГРНТИ
+    df['target_3'] = df['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+.\d+",el)[0]
+                                                for el in x.split('\\') if re.findall("\d+.\d+.\d+",el)])))
+    df_test['target_3'] = df_test['RGNTI'].apply(lambda x:
+                                    list(set([re.findall("\d+.\d+.\d+",el)[0]
+                                                for el in x.split('\\') if re.findall("\d+.\d+.\d+",el)])))
+
+
+    df_trunc = df.copy()
+
+    df_test_trunc = df_test.copy()
+    if number_of_delteted_values > 0:
+
+        list_of_few_values = pd.Series(np.concatenate(
+            df['target'].values)).value_counts()[:-number_of_delteted_values].index.to_list() 
+        df_trunc['target'] = df['target'].apply(lambda x: list(set(x) & set(list_of_few_values)))
+        df_trunc = df_trunc[df_trunc['target'].apply(lambda x: x != []) ]
+
+        df_test_trunc["target"] = df_test['target'].apply(lambda x: list(set(x) & set(list_of_few_values)))
+
+        df_test_trunc["target"] = df_test_trunc["target"].apply(lambda x: x if x!=[] else ["no class"])
+
+
+    unique_vals = np.unique(np.concatenate(df_trunc['target'].values))
+
+    list_of_proper_values_target_2 = []
+    list_of_inproper_values_target_2 = []
+    print(f"Удаление элементов второго уровня, количество которых меньше {minimal_number_of_elements_RGNTI2}")
+    print(df_trunc.head())
+    for target_2_val in tqdm(unique_vals):
+        needed_taget2 = df_trunc['target_2'].apply(lambda x: [re.findall(f"{target_2_val}.\d+",el)[0] for el 
+                                                    in x if re.findall(f"{target_2_val}.\d+",el)])
+        
+        concatenated_list_target2 = pd.Series(np.concatenate(np.array([el for el
+                                                    in needed_taget2.values.tolist() if el], dtype="object"))).value_counts()
+        list_of_proper_values_target_2.extend(concatenated_list_target2[concatenated_list_target2 >= minimal_number_of_elements_RGNTI2].\
+                                            index.to_list())
+        list_of_inproper_values_target_2.extend(concatenated_list_target2[concatenated_list_target2 < minimal_number_of_elements_RGNTI2].\
+                                            index.to_list())
+        
+    set_of_proper_values_target_2 = set(list_of_proper_values_target_2)
+    df_trunc2 = df_trunc.copy()
+
+    df_trunc2_deleted = df_trunc['target_2'].apply(lambda x: list(set(x) -
+                                                    set_of_proper_values_target_2))
+    df_trunc2_deleted = pd.Series([el for el in df_trunc2_deleted if el != []])
+
+    df_trunc2['target_2'] = df_trunc['target_2'].apply(lambda x: list(set(x) &
+                                                        set_of_proper_values_target_2))
+    df_trunc2 = df_trunc2[df_trunc2['target_2'].apply(lambda x: x != []) ]
+    ###################
+
+
+    # Обработка тестового датасета для 2-го уровня
+    df_test_trunc2 = df_test_trunc.copy()
+
+    # Аналогичная обработка для 3-го уровня ГРНТИ
+    list_of_proper_values_target_3 = []
+    list_of_inproper_values_target_3 = []
+    print(f"Удаление элементов третьего уровня, количество которых меньше {minimal_number_of_elements_RGNTI3}")
+    for target_2_val in tqdm(set_of_proper_values_target_2):
+        needed_taget3 = df_trunc2['target_3'].apply(lambda x: [re.findall(f"{target_2_val}.\d+",el)[0] for el 
+                                                in x if re.findall(f"{target_2_val}.\d+",el)])
+        
+        # Filter out empty lists before concatenation
+        non_empty_lists = [el for el in needed_taget3.values.tolist() if el]
+        if non_empty_lists:  # Only proceed if there are elements to concatenate
+            concatenated_list_target3 = pd.Series(np.concatenate(non_empty_lists)).value_counts()
+            list_of_proper_values_target_3.extend(concatenated_list_target3[concatenated_list_target3 >= minimal_number_of_elements_RGNTI3].\
+                                        index.to_list())
+            list_of_inproper_values_target_3.extend(concatenated_list_target3[concatenated_list_target3 < minimal_number_of_elements_RGNTI3].\
+                                        index.to_list())
+        
+    set_of_proper_values_target_3 = set(list_of_proper_values_target_3)
+    df_trunc3 = df_trunc2.copy()
+
+    df_trunc3_deleted = df_trunc2['target_3'].apply(lambda x: list(set(x) -
+                                                set_of_proper_values_target_3))
+    df_trunc3_deleted = pd.Series([el for el in df_trunc3_deleted if el != []])
+
+    df_trunc3['target_3'] = df_trunc2['target_3'].apply(lambda x: list(set(x) &
+                                                    set_of_proper_values_target_3))
+    df_trunc3 = df_trunc3[df_trunc3['target_3'].apply(lambda x: x != []) ]
+
+    #код для графика 3 (аналогично графику 2, но для 3-го уровня)
+    if minimal_number_of_elements_RGNTI3 > 1:
+        fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+        deleted_values_count = pd.Series(np.concatenate(df_trunc3_deleted.values)).value_counts()
+        deleted_values_count = pd.DataFrame({'RGNTI 3':deleted_values_count.index, 
+                    'Количество элементов':deleted_values_count.values})
+
+        print(deleted_values_count.shape)
+
+        sns_plot1 = sns.barplot(y = "RGNTI 3", x = "Количество элементов", data = deleted_values_count)
+
+        sns_plot1.tick_params(labelsize=6)
+        plt.xticks(fontsize=10)
+        
+        plt.tight_layout()
+        plt.title("Количество удаляемых текстов из датасета для 3-ого уровня ГРНТИ")
+        if dir_name:
+            plt.savefig(dir_name + "Количество удаляемых текстов из датасета для 3-ого уровня ГРНТИ.png",
+                        bbox_inches='tight')
+    else:
+        print("Элементы не удаляются из датасета по RGNTI 3")
+
+    fig = plt.figure(facecolor = "#fff3e0",figsize=(8,18), dpi=500)
+    residual_values = pd.Series(np.concatenate(df_trunc3['target_3'].values)).value_counts()
+    residual_values = pd.DataFrame({'RGNTI 3': residual_values.index, 
+                'Количество элементов': residual_values.values})
+    print(residual_values.shape)
+
+    sns_plot2 = sns.barplot(y = "RGNTI 3", x = "Количество элементов", data = residual_values)
+
+    sns_plot2.tick_params(labelsize=6)
+    plt.xticks(fontsize=10)
+
+    plt.tight_layout()
+    plt.title("Количество элементов, остающихся в датасете для 3-ого уровня ГРНТИ")
+    if dir_name:
+        plt.savefig(dir_name + "Количество элементов, остающихся в датасете для 3-ого уровня ГРНТИ.png",
+                    bbox_inches='tight')
+
+    df_test_trunc3 = df_test_trunc2
+
+    union_of_targets = set(unique_vals)
+    coding =  range(len(union_of_targets))
+    dict_Vinit_code_int = dict(zip(union_of_targets, coding))
+
+    if change_codes:
+        with open(grnti_folder + "my_grnti1_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int, outfile)
+
+    with open(grnti_folder + 'my_grnti1_int.json', "r") as code_file:
+        grnti_mapping_dict = json.load(code_file) # Загружаем файл с кодами 
+    n_classes = len(grnti_mapping_dict)
+
+    #Уровень 2
+    unique_vals_level2 = np.unique(np.concatenate(df_trunc3['target_2'].values))
+    union_of_targets2 = set(unique_vals_level2)
+    coding2 =  range(len(union_of_targets2))
+    dict_Vinit_code_int2 = dict(zip(union_of_targets2, coding2))
+    if change_codes:
+        with open(grnti_folder + "my_grnti2_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int2, outfile)
+
+    with open(grnti_folder + 'my_grnti2_int.json', "r") as code_file:
+        grnti_mapping_dict2 = json.load(code_file) # Загружаем файл с кодами 
+    n_classes2 = len(grnti_mapping_dict2)
+
+    #Уровень 3
+    unique_vals_level3 = np.unique(np.concatenate(df_trunc3['target_3'].values))
+    union_of_targets3 = set(unique_vals_level3)
+    coding3 =  range(len(union_of_targets3))
+    dict_Vinit_code_int3 = dict(zip(union_of_targets3, coding3))
+    if change_codes:
+        with open(grnti_folder + "my_grnti3_int.json", "w") as outfile:
+            json.dump(dict_Vinit_code_int3, outfile)
+
+    with open(grnti_folder + 'my_grnti3_int.json', "r") as code_file:
+        grnti_mapping_dict3 = json.load(code_file) # Загружаем файл с кодами 
+    n_classes3 = len(grnti_mapping_dict3)
+
+    #Кодируем классы тренировочного датасета
+    df_trunc_result_multiclass_targets = []
+    for list_el in df_trunc3['target']:
+        classes_zero = [0] * n_classes
+        for index in list_el:
+            if index in grnti_mapping_dict.keys():
+                classes_zero[grnti_mapping_dict[index]] = 1
+
+        df_trunc_result_multiclass_targets.append(classes_zero)
+
+    #Кодируем классы тестового датасета
+    df_test_trunc_result_multiclass_targets = []
+    for list_el in df_test_trunc3['target']:
+        classes_zero = [0] * n_classes
+        for index in list_el:
+            if index in grnti_mapping_dict.keys():
+                classes_zero[grnti_mapping_dict[index]] = 1
+
+        df_test_trunc_result_multiclass_targets.append(classes_zero)
+    df_trunc3['target_coded'] = df_trunc_result_multiclass_targets
+    df_test_trunc3['target_coded'] = df_test_trunc_result_multiclass_targets
+
+    #Кодируем классы тренировочного датасета level2
+    df_trunc_result_multiclass_targets2 = []
+    for list_el in df_trunc3['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
+
+        df_trunc_result_multiclass_targets2.append(classes_zero)
+
+    #Кодируем классы тестового датасета level2
+    df_test_trunc_result_multiclass_targets2 = []
+    for list_el in df_test_trunc3['target_2']:
+        classes_zero = [0] * n_classes2
+        for index in list_el:
+            if index in grnti_mapping_dict2.keys():
+                classes_zero[grnti_mapping_dict2[index]] = 1
+
+        df_test_trunc_result_multiclass_targets2.append(classes_zero)
+
+    df_trunc3['target_coded2'] = df_trunc_result_multiclass_targets2
+    df_test_trunc3['target_coded2'] = df_test_trunc_result_multiclass_targets2
+
+    #Кодируем классы тренировочного датасета level3
+    df_trunc_result_multiclass_targets3 = []
+    for list_el in df_trunc3['target_3']:
+        classes_zero = [0] * n_classes3
+        for index in list_el:
+            if index in grnti_mapping_dict3.keys():
+                classes_zero[grnti_mapping_dict3[index]] = 1
+
+        df_trunc_result_multiclass_targets3.append(classes_zero)
+
+    #Кодируем классы тестового датасета level3
+    df_test_trunc_result_multiclass_targets3 = []
+    for list_el in df_test_trunc3['target_3']:
+        classes_zero = [0] * n_classes3
+        for index in list_el:
+            if index in grnti_mapping_dict3.keys():
+                classes_zero[grnti_mapping_dict3[index]] = 1
+
+        df_test_trunc_result_multiclass_targets3.append(classes_zero)
+
+    df_trunc3['target_coded3'] = df_trunc_result_multiclass_targets3
+    df_test_trunc3['target_coded3'] = df_test_trunc_result_multiclass_targets3
+
+    ############################
+    df_trunc3['text'] = (df_trunc3['title'].apply(lambda x:x+' [SEP] ') 
+                    + df_trunc3['ref_txt'])
+    df_test_trunc3['text'] = (df_test_trunc3['title'].apply(lambda x:x+' [SEP] ')
+                                                + df_test_trunc3['ref_txt'])
+
+    df_trunc3['text'] = (df_trunc3['text'].apply(lambda x:str(x)+' [SEP] ' ) + df_trunc3['kw_list'])
+
+    df_test_trunc3['text'] = df_test_trunc3['text'].apply(lambda x:str(x)+
+                                                        ' [SEP] ') + df_test_trunc3['kw_list']
+
+    df_trunc3 = df_trunc3.dropna(subset=['text'], axis=0)
+    df_test_trunc3 = df_test_trunc3.dropna(subset=['text'], axis=0)
+    df_trunc3 = df_trunc3[df_trunc3['text'].apply(lambda x: len(x.split()) > minimal_number_of_words)]
+
+    print("Доля оставшихся элементов в тренировочном датасете: ", df_trunc3.shape[0] / df.shape[0])
+
+    return df_trunc3, df_test_trunc3, n_classes, n_classes2, n_classes3
 
 def get_encoded_dataset(dataset, tokenizer, 
                                          max_length):
@@ -520,7 +798,6 @@ def prepair_datasets(df, df_test, n_classes, level,
     
     collate_fn = DataCollatorWithPadding(tokenizer=tokenizer)
     return dataset_train, dataset_valid, dataset_test, tokenizer, collate_fn, weights_per_class
-        # loss_fuction_for_multiclass_classification 
 
 def prepair_model(n_classes,
                   pre_trained_model_name='DeepPavlov/rubert-base-cased',
@@ -695,517 +972,346 @@ def save_parameters(dir_name,
 
 def test_predictons(preds, test_dataset_labels, dir_name, 
                        n_classes, level,
-                       grnti_path="", change_for_topk_y=False):
-    treshold_list = [0.1 + 0.05 * x for x in range(0, 18, 1)]
-    f1_score_macro_list = []
-    f1_score_micro_list = []
-    f1_score_weighted_list = []
+                       grnti_path=""):
+    workbook  = xlsxwriter.Workbook(dir_name + 'Статистика тестирования.xlsx')
+
+    merge_format = workbook.add_format({
+        'bold': 1,
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+    merge_format_not_bold = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+    merge_format_not_bold_small = workbook.add_format({
+        'border': 1,
+        'align': 'center',
+        'valign': 'vcenter',
+        'font_size': 9
+    })
+
+    merge_format_empty = workbook.add_format({
+        'border': 0,
+        'align': 'center',
+        'valign': 'vcenter',
+    })
+    worksheet = workbook.add_worksheet(f"BERT_RU_{level}_0")
 
 
-    precision_macro_list = []
-    precision_micro_list = []
-    precision_weighted_list = []
-
-    recall_macro_list = []
-    recall_micro_list = []
-    recall_weighted_list = []
-    
-    best_treshold = None
-    best_metrics_v1  = dict()
-    best_some_f1 = 0
     preds = torch.tensor(preds)
+    test_el_number = preds.shape[0]
 
-    for treshold in tqdm(treshold_list):
-        multilabel_f1_score_macro = MultilabelF1Score(num_labels=n_classes, average='macro', 
-                                                      threshold=treshold)
-        multilabel_precision_macro = MultilabelPrecision(num_labels=n_classes, average='macro', 
-                                                      threshold=treshold)
-        multilabel_recall_macro = MultilabelRecall(num_labels=n_classes, average='macro', 
-                                                      threshold=treshold)
-        
-        f1_score_macro_list.append(multilabel_f1_score_macro(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        precision_macro_list.append(multilabel_precision_macro(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        recall_macro_list.append(multilabel_recall_macro(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        ####
-        multilabel_f1_score_micro = MultilabelF1Score(num_labels=n_classes, average='micro', threshold=treshold)
-        multilabel_precision_micro = MultilabelPrecision(num_labels=n_classes, average='micro', 
-                                                      threshold=treshold)
-        multilabel_recall_micro = MultilabelRecall(num_labels=n_classes, average='micro', 
-                                                      threshold=treshold)
-        
-        f1_score_micro_list.append(multilabel_f1_score_micro(preds, #torch.tensor(test_predictions_level1_2)
-                                                            torch.tensor(test_dataset_labels)))
-        
-        precision_micro_list.append(multilabel_precision_micro(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        recall_micro_list.append(multilabel_recall_micro(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-
-        ####
-
-        multilabel_f1_score_weighted = MultilabelF1Score(num_labels=n_classes, average='weighted',
-                                                        threshold=treshold)
-        multilabel_precision_weighted  = MultilabelPrecision(num_labels=n_classes, average='weighted', 
-                                                      threshold=treshold)
-        multilabel_recall_weighted = MultilabelRecall(num_labels=n_classes, average='weighted', 
-                                                      threshold=treshold)
-        
-
-        f1_score_weighted_list.append(multilabel_f1_score_weighted(preds,#torch.tensor(test_predictions_level1_2), 
-                                                            torch.tensor(test_dataset_labels)))
-        precision_weighted_list.append(multilabel_precision_weighted(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        recall_weighted_list.append(multilabel_recall_weighted(preds, 
-                                                            torch.tensor(test_dataset_labels)))
-        ####
-
-
-        
-        sum_f1 = f1_score_macro_list[-1] + f1_score_micro_list[-1] + f1_score_weighted_list[-1]
-
-        if sum_f1 > best_some_f1:
-            best_some_f1 = sum_f1
-            best_treshold = treshold
-            best_metrics_v1["best_top_k/best_threshold"] = best_treshold
-
-            best_metrics_v1["f1_macro"] = f1_score_macro_list[-1].detach().item()
-            best_metrics_v1["f1_micro"] = f1_score_micro_list[-1].detach().item()
-            best_metrics_v1["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
-
-            best_metrics_v1["precision_macro"] = precision_macro_list[-1].detach().item()
-            best_metrics_v1["precision_micro"] = precision_micro_list[-1].detach().item()
-            best_metrics_v1["precision_weighted"] = precision_weighted_list[-1].detach().item()
-
-            best_metrics_v1["recall_macro"] = recall_macro_list[-1].detach().item()
-            best_metrics_v1["recall_micro"] = recall_micro_list[-1].detach().item()
-            best_metrics_v1["recall_weighted"] = recall_weighted_list[-1].detach().item()
-
-
-    multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none',
-                                                    threshold=best_treshold)
-    multilabel_f1_score_none_res = multilabel_f1_score_none(preds, 
-                                                            torch.tensor(test_dataset_labels))
+    preds_best_treshold = torch.sum(preds >= 1e-5, axis = 1,
+                                    dtype=torch.int)  # сумма для каждого класса
     
-    multilabel_precision_none = MultilabelPrecision(num_labels=n_classes, average='none',
-                                                    threshold=best_treshold)
-    multilabel_precision_none_res = multilabel_precision_none(preds, 
-                                                            torch.tensor(test_dataset_labels))
-    
-    multilabel_recall_none = MultilabelRecall(num_labels=n_classes, average='none',
-                                                    threshold=best_treshold)
-    multilabel_recall_none_res = multilabel_recall_none(preds, 
-                                                            torch.tensor(test_dataset_labels))
-    
-    mulitlabel_stat_scores_none= MultilabelStatScores(num_labels=n_classes, average='none')
-    mulitlabel_stat_scores_none_res = mulitlabel_stat_scores_none(preds, 
-                                                            torch.tensor(test_dataset_labels))[:, :-1]
-    
-
-    with open(grnti_path + f'my_grnti{level}_int.json', "r") as code_file:
-        grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
-
-    grnti_mapping_dict_true_numbers_reverse = {y: x for x, y in 
-                                               grnti_mapping_dict_true_numbers.items()}
-    
-
-    # df_rubrics_f1 = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                 for key in range(n_classes)], 
-    #                                 "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
-    # df_rubrics_f1.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "threshold_№_F1_sorted_by_№.csv",
-    #                                                index=False) 
-
-
-    # df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                             for key in range(n_classes)], 
-    #                             "TP":mulitlabel_stat_scores_none_res[:, 0],
-    #                             "FP":mulitlabel_stat_scores_none_res[:, 1],
-    #                             "TN":mulitlabel_stat_scores_none_res[:, 2],
-    #                             "FN":mulitlabel_stat_scores_none_res[:, 3]})
-    
-    # df_rubrics_stats.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "threshold_№_stats_sorted_by_№.csv",
-    #                                                index=False) 
-    
-    # df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                 for key in range(n_classes)], 
-    #                                 "Precision":torch.round(multilabel_precision_none_res, 
-    #                                                         decimals=2)})
-    # df_rubrics_precision.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "threshold_№_Precision_sorted_by_№.csv",
-    #                                                index=False) 
-
-    # df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                 for key in range(n_classes)], 
-    #                                 "Recall":torch.round(multilabel_recall_none_res, 
-    #                                                         decimals=2)})
-    # df_rubrics_recall.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "threshold_№_Recall_sorted_by_№.csv",
-    #                                                index=False) 
-    
-    df_rubrics_f1_precision_recall_stats = pd.DataFrame({
-        "№": [grnti_mapping_dict_true_numbers_reverse[key] for key in range(n_classes)], 
-        "F1": torch.round(multilabel_f1_score_none_res, decimals=2),
-        "Precision":torch.round(multilabel_precision_none_res, decimals=2),
-        "Recall":torch.round(multilabel_recall_none_res, decimals=2),
-        "TP":mulitlabel_stat_scores_none_res[:, 0],
-        "FP":mulitlabel_stat_scores_none_res[:, 1],
-        "TN":mulitlabel_stat_scores_none_res[:, 2],
-        "FN":mulitlabel_stat_scores_none_res[:, 3]}).sort_values(by=['№'], ascending=True)
-
-    df_rubrics_f1_precision_recall_stats.to_csv(
-        dir_name + "threshold_№_F1_Precision_Recall_Stats.csv",
-        index=False) 
-    
-    preds_best_treshold = torch.sum(preds >= best_treshold, axis = 1)
-    
-    preds_best_treshold_no_zeros = preds_best_treshold[preds_best_treshold > 0.99]
-
+    preds_best_treshold_no_zeros_sum =  torch.sum(preds_best_treshold >= 1) # кол-во элементов без пропусков
+    reject_number = preds.shape[0] - preds_best_treshold_no_zeros_sum
 
     print("Cтатистика количества пркдсказываемых классов при заданном threshold:")
     print("Среднее число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.sum(preds_best_treshold_no_zeros)/preds_best_treshold_no_zeros.shape[0])
+            torch.sum(preds_best_treshold)/preds_best_treshold.shape[0])
     print("Минимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.min(preds_best_treshold_no_zeros))
-    print("Максимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-            torch.max(preds_best_treshold_no_zeros))
-    print("Доля статей c пустым ответом классификатора (Empty):", 
-          1 - preds_best_treshold_no_zeros.shape[0]/ preds_best_treshold.shape[0])
-    plt.figure()
-
-    plt.plot(treshold_list, f1_score_macro_list, label = "macro")
-    plt.plot(treshold_list, f1_score_micro_list, label = "micro")
-    plt.plot(treshold_list, f1_score_weighted_list, label = "weighted")
-    plt.xticks(treshold_list, rotation=70)
-    plt.title("Зависимость f1_score от threshold")
-    plt.xlabel("threshold")
-    plt.ylabel("f1_score")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость f1_score от threshold.png",
-                    bbox_inches='tight')
-    plt.close()
-    plt.figure()
-
-
-    plt.figure()
-    plt.plot(treshold_list, precision_macro_list, label = "macro")
-    plt.plot(treshold_list, precision_micro_list, label = "micro")
-    plt.plot(treshold_list, precision_weighted_list, label = "weighted")
-    plt.xticks(treshold_list, rotation=70)
-    plt.title("Зависимость precision от threshold")
-    plt.xlabel("threshold")
-    plt.ylabel("precision")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость precision от threshold.png",
-                    bbox_inches='tight')
-    plt.close()
-
-    plt.figure()
-    print("recall_micro_list threshold:", recall_micro_list)
-    print("recall_macro_list threshold:", recall_macro_list)
-    print("recall_wighted_list threshold:", recall_weighted_list)
-    plt.plot(treshold_list, recall_macro_list, label = "macro")
-    plt.plot(treshold_list, recall_micro_list, label = "micro")
-    plt.plot(treshold_list, recall_weighted_list, label = "weighted")
-    plt.xticks(treshold_list, rotation=70)
-    plt.title("Зависимость recall от threshold")
-    plt.xlabel("threshold")
-    plt.ylabel("recall")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость recall от threshold.png",
-                    bbox_inches='tight')
-    plt.close()
-
-
-    plt.figure()
-    plt.plot(treshold_list, [torch.sum(torch.sum(preds >= treshold, axis = 1) < 0.1) / preds.shape[0] for 
-                             treshold in tqdm(treshold_list)])
-    plt.xticks(treshold_list, rotation=70)
-    plt.title("Зависимость f1_score от threshold")
-    plt.xlabel("threshold")
-    plt.ylabel("Доля элементов с пустым результатом классификации (Empty)")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость доли элементов с пустым результатом классификации от threshold.png",
-                    bbox_inches='tight')
-    plt.close()
-
-    
-    # with open(dir_name + "best_metrics_threshold.json", "w") as outfile:
-    #     json.dump(best_metrics, outfile)
-
-    ###Часть с 1-м, 2-м, 3-м
-    top_k_list = list(range(1, 4))
-    f1_score_macro_list = []
-    f1_score_micro_list = []
-    f1_score_weighted_list = []
-
-    precision_macro_list = []
-    precision_micro_list = []
-    precision_weighted_list = []
-
-    recall_macro_list = []
-    recall_micro_list = []
-    recall_weighted_list = []
-
-
-    best_top_k = None
-    best_metrics_v2  = dict()
-    best_some_f1 = 0
-    test_dataset_labels = torch.tensor(test_dataset_labels, dtype=float)
-
-    for top_k in tqdm(top_k_list):
-        pred_for_top_k = torch.zeros(preds.shape, dtype=float)  
-        labels_for_top_k = torch.zeros(preds.shape, dtype=float)  
-
-        top_indeces = torch.topk(preds, top_k).indices
-
-        preds_range = torch.arange(pred_for_top_k.size(0)).unsqueeze(1)
-
-        pred_for_top_k[preds_range, top_indeces] = 1.
-        if change_for_topk_y:
-
-            labels_for_top_k[preds_range, top_indeces] = test_dataset_labels[preds_range, top_indeces]
-        else:
-            labels_for_top_k = test_dataset_labels
-        ###
-        multilabel_f1_score_macro = MultilabelF1Score(num_labels=n_classes, average='macro')
-
-        multilabel_precision_macro = MultilabelPrecision(num_labels=n_classes, average='macro')
-        multilabel_recall_macro = MultilabelRecall(num_labels=n_classes, average='macro')
-        
-        f1_score_macro_list.append(multilabel_f1_score_macro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-        precision_macro_list.append(multilabel_precision_macro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-        recall_macro_list.append(multilabel_recall_macro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-
-        ##
-        multilabel_f1_score_micro = MultilabelF1Score(num_labels=n_classes, average='micro')
-
-        multilabel_precision_micro = MultilabelPrecision(num_labels=n_classes, average='micro')
-        multilabel_recall_micro = MultilabelRecall(num_labels=n_classes, average='micro')
-        
-
-        f1_score_micro_list.append(multilabel_f1_score_micro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-        
-        precision_micro_list.append(multilabel_precision_micro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-        recall_micro_list.append(multilabel_recall_micro(pred_for_top_k, #torch.tensor(test_predictions_level1_2)
-                                                            labels_for_top_k))
-
-        ##
-        multilabel_f1_score_weighted = MultilabelF1Score(num_labels=n_classes, average='weighted')
-        multilabel_precision_weighted  = MultilabelPrecision(num_labels=n_classes, average='weighted')
-        multilabel_recall_weighted = MultilabelRecall(num_labels=n_classes, average='weighted')
-        
-
-        
-        f1_score_weighted_list.append(multilabel_f1_score_weighted(pred_for_top_k,#torch.tensor(test_predictions_level1_2), 
-                                                            labels_for_top_k))
-        precision_weighted_list.append(multilabel_precision_weighted(pred_for_top_k,#torch.tensor(test_predictions_level1_2), 
-                                                            labels_for_top_k))
-        recall_weighted_list.append(multilabel_recall_weighted(pred_for_top_k,#torch.tensor(test_predictions_level1_2), 
-                                                            labels_for_top_k))
-
-        ##
-        
-        sum_f1 = f1_score_macro_list[-1] + f1_score_micro_list[-1] + f1_score_weighted_list[-1]
-        
-        sum_f1 = f1_score_macro_list[-1] + f1_score_micro_list[-1] + f1_score_weighted_list[-1]
-
-        if sum_f1 > best_some_f1:
-            best_some_f1 = sum_f1
-            best_top_k = top_k
-            best_metrics_v2["best_top_k/best_threshold"] = best_top_k
-
-            best_metrics_v2["f1_macro"] = f1_score_macro_list[-1].detach().item()
-            best_metrics_v2["f1_micro"] = f1_score_micro_list[-1].detach().item()
-            best_metrics_v2["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
-
-            best_metrics_v2["precision_macro"] = precision_macro_list[-1].detach().item()
-            best_metrics_v2["precision_micro"] = precision_micro_list[-1].detach().item()
-            best_metrics_v2["precision_weighted"] = precision_weighted_list[-1].detach().item()
-
-            best_metrics_v2["recall_macro"] = recall_macro_list[-1].detach().item()
-            best_metrics_v2["recall_micro"] = recall_micro_list[-1].detach().item()
-            best_metrics_v2["recall_weighted"] = recall_weighted_list[-1].detach().item()
-
-    pred_for_top_k = torch.zeros(preds.shape, dtype=float)  
-    labels_for_top_k = torch.zeros(preds.shape,  dtype=float)  
-
-    top_indeces = torch.topk(preds, best_top_k).indices
-    preds_range = torch.arange(pred_for_top_k.size(0)).unsqueeze(1)
-
-
-    pred_for_top_k[preds_range, top_indeces] = 1.
-    if change_for_topk_y:
-        labels_for_top_k[preds_range, top_indeces] = test_dataset_labels[preds_range, top_indeces]
-    else:
-        labels_for_top_k = test_dataset_labels
-    
-
-    multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none')
-    multilabel_f1_score_none_res = multilabel_f1_score_none(pred_for_top_k, labels_for_top_k)
-
-    multilabel_precision_none = MultilabelPrecision(num_labels=n_classes, average='none',
-                                                    threshold=best_treshold)
-    multilabel_precision_none_res = multilabel_precision_none(pred_for_top_k, labels_for_top_k)
-    
-    multilabel_recall_none = MultilabelRecall(num_labels=n_classes, average='none',
-                                                    threshold=best_treshold)
-    multilabel_recall_none_res = multilabel_recall_none(pred_for_top_k, labels_for_top_k)
-    
-    mulitlabel_stat_scores_none= MultilabelStatScores(num_labels=n_classes, average='none')
-    mulitlabel_stat_scores_none_res = mulitlabel_stat_scores_none(pred_for_top_k,
-                                                                  labels_for_top_k)[:, :-1]
-    
-
-
-    with open(grnti_path + f'my_grnti{level}_int.json', "r") as code_file:
-        grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
-    grnti_mapping_dict_true_numbers_reverse = {y: x for x, y in 
-                                               grnti_mapping_dict_true_numbers.items()}
-    
-
-    # df_rubrics = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                 for key in range(n_classes)], 
-    #                                 "F1":torch.round(multilabel_f1_score_none_res, decimals=2)})
-    # df_rubrics.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "top_k_№_F1_sorted_by_№.csv",
-    #                                                index=False) 
-
-    # df_rubrics_precision = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                     for key in range(n_classes)], 
-    #                                     "Precision":torch.round(multilabel_precision_none_res, 
-    #                                                             decimals=2)})
-    # df_rubrics_precision.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "top_k_№_Precision_sorted_by_№.csv",
-    #                                                index=False) 
-
-    # df_rubrics_recall = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                                 for key in range(n_classes)], 
-    #                                 "Recall":torch.round(multilabel_recall_none_res, 
-    #                                                         decimals=2)})
-    # df_rubrics_recall.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "top_k_№_Recall_sorted_by_№.csv",
-    #                                                index=False) 
-
-
-    # df_rubrics_stats = pd.DataFrame({"№":[grnti_mapping_dict_true_numbers_reverse[key]
-    #                             for key in range(n_classes)], 
-    #                             "TP":mulitlabel_stat_scores_none_res[:, 0],
-    #                             "FP":mulitlabel_stat_scores_none_res[:, 1],
-    #                             "TN":mulitlabel_stat_scores_none_res[:, 2],
-    #                             "FN":mulitlabel_stat_scores_none_res[:, 3]})
-    
-    # df_rubrics_stats.sort_values(by=['№'], 
-    #                        ascending=True).to_csv(dir_name + "top_k_№_stats_sorted_by_№.csv",
-    #                                                index=False) 
-   
-    df_rubrics_f1_precision_recall_stats = pd.DataFrame({
-        "№": [grnti_mapping_dict_true_numbers_reverse[key] for key in range(n_classes)], 
-        "F1": torch.round(multilabel_f1_score_none_res, decimals=2),
-        "Precision":torch.round(multilabel_precision_none_res, decimals=2),
-        "Recall":torch.round(multilabel_recall_none_res, decimals=2),
-        "TP":mulitlabel_stat_scores_none_res[:, 0],
-        "FP":mulitlabel_stat_scores_none_res[:, 1],
-        "TN":mulitlabel_stat_scores_none_res[:, 2],
-        "FN":mulitlabel_stat_scores_none_res[:, 3]}).sort_values(by=['№'], ascending=True)
-
-    df_rubrics_f1_precision_recall_stats.to_csv(
-        dir_name + "top_K_№_F1_Precision_Recall_Stats.csv",
-        index=False)
-
-    preds_best_treshold = torch.sum(preds >= 1e-8, axis = 1)
-    
-    preds_best_treshold_no_zeros_sum =  torch.sum(preds_best_treshold > 0.99)
+            torch.min(preds_best_treshold))
+    print("Максимальное число предсказываемых классов для одной статьи,"
+          " для которой получено предсказание",
+            torch.max(preds_best_treshold))
 
     print("Количество отказов от классификации (Reject)", 
-          preds_best_treshold.shape[0] - preds_best_treshold_no_zeros_sum)
+          reject_number)
     print("Доля отказов от классификации (Reject)", 
           1 - preds_best_treshold_no_zeros_sum / preds_best_treshold.shape[0])
     
-    # print("Cтатистика количества пркдсказываемых классов при не заданном threshold:")
-    # print("Среднее число предсказываемых классов для одной статьи, для которой получено предсказание",
-    #         torch.sum(preds_best_treshold_no_zeros)/preds_best_treshold_no_zeros.shape[0])
-    # print("Минимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-    #         torch.min(preds_best_treshold_no_zeros))
-    # print("Максимальное число предсказываемых классов для одной статьи, для которой получено предсказание",
-    #         torch.max(preds_best_treshold_no_zeros))
-    # print("Доля статей без предсказанного класса:", 
-    #       1 - preds_best_treshold_no_zeros.shape[0]/ preds_best_treshold.shape[0])
+    threshold_list = [0.1 + 0.05 * x for x in range(0, 18, 1)]
+    top_k_list = list(range(1, 4))
+    preds_new = copy.deepcopy(preds)
+
+    test_dataset_labels = torch.tensor(test_dataset_labels, dtype=torch.float)
+
+
+    for kind_of_metric, list_for_metric_kind, kind_index in zip(["threshold", "top_k"],
+                                                    [threshold_list, top_k_list],
+                                                    [0, 1]):
+        first_index = 4
+
+        f1_score_macro_list = []
+        f1_score_micro_list = []
+        f1_score_weighted_list = []
+
+
+        precision_macro_list = []
+        precision_micro_list = []
+        precision_weighted_list = []
+
+        recall_macro_list = []
+        recall_micro_list = []
+        recall_weighted_list = []
+        
+        best_metric = None
+        best_metrics  = dict()
+        best_some_f1 = 0
+
+
+        for metric_values in tqdm(list_for_metric_kind):
+            if kind_of_metric == "top_k":
+                threshold = 0.
+                pred_for_top_k = torch.zeros(preds.shape, dtype=float)  
+
+                top_indeces = torch.topk(preds, metric_values).indices
+
+                preds_range = torch.arange(pred_for_top_k.size(0)).unsqueeze(1)
+
+                pred_for_top_k[preds_range, top_indeces] = 1.
+                preds_new = pred_for_top_k
+            else:
+                threshold = metric_values
+            multilabel_f1_score_macro = MultilabelF1Score(num_labels=n_classes, average='macro', 
+                                                        threshold=threshold)
+            multilabel_precision_macro = MultilabelPrecision(num_labels=n_classes, average='macro', 
+                                                        threshold=threshold)
+            multilabel_recall_macro = MultilabelRecall(num_labels=n_classes, average='macro', 
+                                                        threshold=threshold)
+            
+            f1_score_macro_list.append(multilabel_f1_score_macro(preds_new, 
+                                                                test_dataset_labels))
+            precision_macro_list.append(multilabel_precision_macro(preds_new,
+                                                                test_dataset_labels))
+            recall_macro_list.append(multilabel_recall_macro(preds_new,
+                                                            test_dataset_labels))
+            ####
+            multilabel_f1_score_micro = MultilabelF1Score(num_labels=n_classes, average='micro',
+                                                        threshold=threshold)
+            multilabel_precision_micro = MultilabelPrecision(num_labels=n_classes, average='micro', 
+                                                        threshold=threshold)
+            multilabel_recall_micro = MultilabelRecall(num_labels=n_classes, average='micro', 
+                                                        threshold=threshold)
+            
+            f1_score_micro_list.append(multilabel_f1_score_micro(preds_new,
+                                                                test_dataset_labels))
+            
+            precision_micro_list.append(multilabel_precision_micro(preds_new,
+                                                                test_dataset_labels))
+            recall_micro_list.append(multilabel_recall_micro(preds_new,
+                                                            test_dataset_labels))
+
+            ####
+
+            multilabel_f1_score_weighted = MultilabelF1Score(num_labels=n_classes, average='weighted',
+                                                            threshold=threshold)
+            multilabel_precision_weighted  = MultilabelPrecision(num_labels=n_classes, average='weighted', 
+                                                        threshold=threshold)
+            multilabel_recall_weighted = MultilabelRecall(num_labels=n_classes, average='weighted', 
+                                                        threshold=threshold)
+            
+
+            f1_score_weighted_list.append(multilabel_f1_score_weighted(preds_new,
+                                                                    test_dataset_labels))
+            precision_weighted_list.append(multilabel_precision_weighted(preds_new,
+                                                                        test_dataset_labels))
+            recall_weighted_list.append(multilabel_recall_weighted(preds_new,
+                                                                test_dataset_labels))
+            ####
+
+
+            
+            sum_f1 = f1_score_macro_list[-1] + f1_score_micro_list[-1] + f1_score_weighted_list[-1]
+
+            if sum_f1 > best_some_f1:
+                best_some_f1 = sum_f1
+                best_metric = threshold if kind_of_metric == "threshold" else metric_values
+                best_metrics[f"best_{kind_of_metric}"] = best_metric
+
+                best_metrics["f1_macro"] = f1_score_macro_list[-1].detach().item()
+                best_metrics["f1_micro"] = f1_score_micro_list[-1].detach().item()
+                best_metrics["f1_weighted"] = f1_score_weighted_list[-1].detach().item()
+
+                best_metrics["precision_macro"] = precision_macro_list[-1].detach().item()
+                best_metrics["precision_micro"] = precision_micro_list[-1].detach().item()
+                best_metrics["precision_weighted"] = precision_weighted_list[-1].detach().item()
+
+                best_metrics["recall_macro"] = recall_macro_list[-1].detach().item()
+                best_metrics["recall_micro"] = recall_micro_list[-1].detach().item()
+                best_metrics["recall_weighted"] = recall_weighted_list[-1].detach().item()
+
+        if kind_of_metric == "top_k":
+            threshold = 0.
+            pred_for_top_k = torch.zeros(preds.shape, dtype=float)  
+
+            top_indeces = torch.topk(preds, best_metric).indices
+
+            preds_range = torch.arange(pred_for_top_k.size(0)).unsqueeze(1)
+
+            pred_for_top_k[preds_range, top_indeces] = 1.
+            preds_new = pred_for_top_k
+        else:
+
+            threshold = best_metric
+            
+            empty_number = preds.shape[0] - torch.sum((torch.sum(preds, axis=1) - threshold) > 1e-5,
+                                           dtype=torch.int).item()
+
+            print("Доля статей c пустым ответом классификатора (Empty):",
+                  1 - empty_number / preds.shape[0])
+
+
+        multilabel_f1_score_none = MultilabelF1Score(num_labels=n_classes, average='none',
+                                                        threshold=threshold)
+        multilabel_f1_score_none_res = multilabel_f1_score_none(preds_new,
+                                                                test_dataset_labels)
+        
+        multilabel_precision_none = MultilabelPrecision(num_labels=n_classes, average='none',
+                                                        threshold=threshold)
+        multilabel_precision_none_res = multilabel_precision_none(preds_new,
+                                                                test_dataset_labels)
+        
+        multilabel_recall_none = MultilabelRecall(num_labels=n_classes, average='none',
+                                                        threshold=threshold)
+        multilabel_recall_none_res = multilabel_recall_none(preds_new,
+                                                            test_dataset_labels)
+        
+        mulitlabel_stat_scores_none= MultilabelStatScores(num_labels=n_classes,
+                                                          average='none',
+                                                          threshold=threshold)
+        
+        mulitlabel_stat_scores_none_res = mulitlabel_stat_scores_none(preds_new,
+                                                                    test_dataset_labels)[:, :-1]
+        
+
+        with open(grnti_path + f'my_grnti{level}_int.json', "r") as code_file:
+            grnti_mapping_dict_true_numbers = json.load(code_file) # Загружаем файл с кодами 
+
+        grnti_mapping_dict_true_numbers_reverse = {y: x for x, y in 
+                                                grnti_mapping_dict_true_numbers.items()}
+        
+        df_rubrics_f1_precision_recall_stats = pd.DataFrame({
+            "№": [grnti_mapping_dict_true_numbers_reverse[key] for key in range(n_classes)], 
+            "F1": torch.round(multilabel_f1_score_none_res, decimals=3),
+            "Precision":torch.round(multilabel_precision_none_res, decimals=3),
+            "Recall":torch.round(multilabel_recall_none_res, decimals=3),
+            "TP":mulitlabel_stat_scores_none_res[:, 0],
+            "FP":mulitlabel_stat_scores_none_res[:, 1],
+            "TN":mulitlabel_stat_scores_none_res[:, 2],
+            "FN":mulitlabel_stat_scores_none_res[:, 3]}).sort_values(by=['№'], ascending=True)
+
+        plt.plot(list_for_metric_kind, f1_score_macro_list, label = "macro")
+        plt.plot(list_for_metric_kind, f1_score_micro_list, label = "micro")
+        plt.plot(list_for_metric_kind, f1_score_weighted_list, label = "weighted")
+        plt.xticks(list_for_metric_kind, rotation=70)
+        plt.title(f"Зависимость f1_score от {kind_of_metric}")
+        plt.xlabel(kind_of_metric)
+        plt.ylabel("f1_score")
+        plt.legend()
+        plt.grid()
+        plt.savefig(dir_name + f"Зависимость f1_score от {kind_of_metric}.png",
+                        bbox_inches='tight')
+        plt.close()
+        plt.figure()
+
+
+        plt.figure()
+        plt.plot(list_for_metric_kind, precision_macro_list, label = "macro")
+        plt.plot(list_for_metric_kind, precision_micro_list, label = "micro")
+        plt.plot(list_for_metric_kind, precision_weighted_list, label = "weighted")
+        plt.xticks(list_for_metric_kind, rotation=70)
+        plt.title(f"Зависимость precision от {kind_of_metric}")
+        plt.xlabel(kind_of_metric)
+        plt.ylabel("precision")
+        plt.legend()
+        plt.grid()
+        plt.savefig(dir_name + f"Зависимость precision от {kind_of_metric}.png",
+                        bbox_inches='tight')
+        plt.close()
+
+        plt.figure()
+        print(f"recall_micro_list {kind_of_metric}:", recall_micro_list)
+        print(f"recall_macro_list {kind_of_metric}:", recall_macro_list)
+        print(f"recall_wighted_list {kind_of_metric}:", recall_weighted_list)
+        plt.plot(list_for_metric_kind, recall_macro_list, label = "macro")
+        plt.plot(list_for_metric_kind, recall_micro_list, label = "micro")
+        plt.plot(list_for_metric_kind, recall_weighted_list, label = "weighted")
+        plt.xticks(list_for_metric_kind, rotation=70)
+        plt.title(f"Зависимость recall от {kind_of_metric}")
+        plt.xlabel(kind_of_metric)
+        plt.ylabel("recall")
+        plt.legend()
+        plt.grid()
+        plt.savefig(dir_name + f"Зависимость recall от {kind_of_metric}.png",
+                        bbox_inches='tight')
+        plt.close()
+
+        if kind_of_metric == "threshold":
+            plt.figure()
+            plt.plot(list_for_metric_kind,
+                    [torch.sum(
+                        torch.sum(preds >= treshold, axis = 1) < 0.1) / preds.shape[0] for 
+                                    treshold in tqdm(list_for_metric_kind)
+                                    ])
+            plt.xticks(list_for_metric_kind, rotation=70)
+            plt.title("Зависимость доли элементов с пустым результатом классификации "
+                      f"от {kind_of_metric}")
+            plt.xlabel(kind_of_metric)
+            plt.ylabel("Доля Empty")
+            plt.legend()
+            plt.grid()
+            plt.savefig(dir_name + "Зависимость доли элементов с пустым результатом"
+                        f" классификации от {kind_of_metric}.png",
+                            bbox_inches='tight')
+            plt.close()
+
+
+        sum_of_tp_fp_tn_fn = [df_rubrics_f1_precision_recall_stats[el].sum()
+                              for el in ['TP', 'FP', 'TN', 'FN']]
+
+        df_rubrics_f1_precision_recall_stats["№"] = df_rubrics_f1_precision_recall_stats["№"].\
+            astype(str)
+        first_index += kind_index * (7  + df_rubrics_f1_precision_recall_stats.shape[0])
+
+        for key, val in zip(["TP sum", "FP sum", "TN sum", "FN sum"], sum_of_tp_fp_tn_fn):
+
+            best_metrics[key] = val
+
+        worksheet.merge_range(first_index + 0, 0, first_index + 0, len(best_metrics)-2,
+                            "Усредненные метрики для лучшего значения "
+                            f"{kind_of_metric} = {round(best_metrics['best_' + kind_of_metric], 3)}",
+                            merge_format)
+
+        best_metrics.pop('best_' + kind_of_metric)
+        for col, key_val in enumerate(best_metrics.items()):
+            worksheet.write_string(first_index + 1, col, key_val[0], merge_format_not_bold)  # Write the key as the header
+            if not kind_index:
+                worksheet.set_column(first_index + 1, col, 16) #len(key_val[0]) 15
+
+            worksheet.write(first_index + 2, col, round(key_val[1], 3),merge_format_not_bold)  # Write the key as the header
+
+            worksheet.write_blank(first_index + 3, col, None, merge_format_empty)
+
+        worksheet.merge_range(first_index + 4, 0, first_index + 4, 7,
+                            f"Метрики для всех классов для лучшего значения {kind_of_metric}",
+                            merge_format)
+
+
+        for col, name in enumerate(df_rubrics_f1_precision_recall_stats.columns):
+            worksheet.write_string(first_index + 5, col, name, merge_format_not_bold)
+
+        for index, row in df_rubrics_f1_precision_recall_stats.iterrows():
+
+            worksheet.write_string(first_index + 6 + index, 0, row[0], merge_format_not_bold)
+            for column in range(1, df_rubrics_f1_precision_recall_stats.shape[1]):
+                worksheet.write(first_index + 6 + index, column, round(row[column],3), merge_format_not_bold)
+
+        for column in range(df_rubrics_f1_precision_recall_stats.shape[1]):
+            worksheet.write_blank(first_index + 6 + df_rubrics_f1_precision_recall_stats.shape[0],
+                                  column, None, merge_format_empty)
+    worksheet.merge_range(0, 0, 0, 2,
+                        "Количество ответов REJECT, EMPTY и документов",
+                        merge_format)
     
-    plt.figure()
-    plt.plot(top_k_list, f1_score_macro_list, label = "macro")
-    plt.plot(top_k_list, f1_score_micro_list, label = "micro")
-    plt.plot(top_k_list, f1_score_weighted_list, label = "weighted")
+    for index, number_number_name in enumerate(zip([reject_number, empty_number, test_el_number],
+                                                    ["кол-во ответов REJECT", "кол-во ответов EMPTY", "кол-во документов"])):
+        number, number_name = number_number_name
+        worksheet.write_string(1, index, number_name, merge_format_not_bold_small)
+        worksheet.write(2, index, number, merge_format_not_bold)
 
-    print("f1_top_k_macro", np.round(f1_score_macro_list, decimals=2))
-    print("f1_top_k_maicro", np.round(f1_score_micro_list, decimals=2))
-    print("f1_top_k_weighted", np.round(f1_score_weighted_list, decimals=2))
-
-    plt.xticks(top_k_list)
-    plt.title("Зависимость f1_score от числа наиболее вероятных классов")
-    plt.xlabel("Число наиболее вероятных классов")
-    plt.ylabel("f1_score")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость f1_score от числа наиболее вероятных классов.png",
-                    bbox_inches='tight')
-    plt.close()
-
-
-    plt.figure()
-    plt.plot(top_k_list, precision_macro_list, label = "macro")
-    plt.plot(top_k_list, precision_micro_list, label = "micro")
-    plt.plot(top_k_list, precision_weighted_list, label = "weighted")
-
-
-    print("precision_top_k_macro", np.round(precision_macro_list, decimals=2))
-    print("precision_top_k_maicro", np.round(precision_micro_list, decimals=2))
-    print("precision_top_k_weighted", np.round(precision_weighted_list, decimals=2))
-    
-    plt.xticks(top_k_list)
-    plt.title("Зависимость precision от числа наиболее вероятных классов")
-    plt.xlabel("Число наиболее вероятных классов")
-    plt.ylabel("precision")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость precision от числа наиболее вероятных классов.png",
-                    bbox_inches='tight')
-    plt.close()
-
-
-    print("recall_top_k_macro:", torch.stack(recall_macro_list) )
-    print("recall_top_k_micro:", torch.stack(recall_micro_list))
-    print("recall_top_k_weighted:", torch.stack(recall_weighted_list))
-
-    plt.figure()
-    plt.plot(top_k_list, torch.stack(recall_macro_list), label = "macro")
-    plt.plot(top_k_list, torch.stack(recall_micro_list), label = "micro")
-    plt.plot(top_k_list, torch.stack(recall_weighted_list), label = "weighted")
-    plt.xticks(top_k_list)
-    plt.title("Зависимость recall от числа наиболее вероятных классов")
-    plt.xlabel("Число наиболее вероятных классов")
-    plt.ylabel("recall")
-    plt.legend()
-    plt.grid()
-    plt.savefig(dir_name + "Зависимость recall от числа наиболее вероятных классов.png",
-                    bbox_inches='tight')
-    plt.close()
-
-
-    pd.DataFrame.from_dict([best_metrics_v1, best_metrics_v2]).to_csv(
-        dir_name + "best_metrics.csv",
-        index=False)
-    # with open(dir_name + "best_metrics_top_k.json", "w") as outfile:
-    #     json.dump(best_metrics, outfile)
+    workbook.close()
