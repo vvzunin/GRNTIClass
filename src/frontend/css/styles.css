@@ -5,10 +5,12 @@ body {
     padding: 20px;
     color: #333;
 }
+
 h1 {
     color: #0066cc;
     text-align: center;
 }
+
 h2 {
     color: #0066cc;
     border-bottom: 1px solid #ddd;
@@ -167,10 +169,6 @@ button:disabled {
     font-size: 0.9em;
 }
 
-.file-info {
-    margin-top: 10px;
-}
-/* 10px */
 .file-list {
     list-style-type: none;
     padding: 0;
@@ -220,13 +218,6 @@ button:disabled {
     background: none;
     border: none;
     font-size: 1.1em;
-}
-
-.drag-hint {
-    color: #666;
-    font-size: 14px;
-    text-align: center;
-    margin: 5px 0;
 }
 
 .drag-over {
@@ -298,21 +289,9 @@ button:disabled {
     transform: translateX(0);
 }
 
-.notification-icon {
-    margin-right: 10px;
-    font-size: 20px;
-}
-
-.notification-close {
-    margin-left: 15px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
 .error-notification {
     background-color: #f44336;
 }
-
 
 /* Стили для результатов классификации */
 .result-item {
@@ -340,27 +319,6 @@ button:disabled {
     margin-top: 10px;
 }
 
-.rubric-item {
-    margin: 5px 0;
-    padding: 5px;
-    background-color: #f8f9fa;
-    border-radius: 3px;
-}
-
-.rubric-code {
-    font-weight: bold;
-    color: #0066cc;
-}
-
-.rubric-probability {
-    float: right;
-    color: #666;
-}
-
-.rubric-name {
-    margin-left: 5px;
-}
-
 .no-results {
     color: #666;
     font-style: italic;
@@ -371,18 +329,6 @@ button:disabled {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
-.loader {
-    border: 5px solid #f3f3f3;
-    border-top: 5px solid #0066cc;
-    border-radius: 50%;
-    width: 50px;
-    height: 50px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto;
-}
-
-
 
 /* Добавляем новые стили для прогресс-бара */
 .progress-container {
@@ -403,4 +349,67 @@ button:disabled {
 #fileProgress {
     font-size: 14px;
     color: #555;
+}
+
+.rubric-item {
+    display: flex;
+    /* align-items: flex-start; */
+    margin-bottom: 8px;
+    align-items: baseline; /* Выравнивает элементы по базовой линии */
+
+    margin: 5px 0;
+    padding: 5px;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+}
+
+.rubric-code {
+    font-weight: bold;
+    margin-right: 10px;
+    min-width: 50px;
+
+    font-weight: bold;
+    color: #0066cc;
+}
+
+.rubric-info {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.rubric-name {
+    word-break: break-word; 
+    margin-bottom: 4px;
+}
+
+.rubric-probability {
+    color: #666;
+    font-size: 0.9em;
+    margin-left: auto; 
+    white-space: nowrap; /* Запрещает перенос числа */
+    font-weight: bold;
+
+}
+.download-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 20px;
+    transition: opacity 0.7s ease, transform 0.7s ease;
+
+}
+
+.download-btn:hover {
+    background-color: #45a049;
+}
+
+.download-btn.hidden {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
 }

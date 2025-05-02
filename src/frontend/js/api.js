@@ -7,7 +7,7 @@ class API {
             formData.append('level1', params.level1);
             formData.append('level2', params.level2);
             formData.append('level3', params.level3);
-            formData.append('normalization', params.normalization);
+            // formData.append('normalization', params.normalization);
             formData.append('decoding', params.decoding);
             formData.append('threshold', params.threshold);
 

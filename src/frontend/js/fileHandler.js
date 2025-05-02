@@ -21,6 +21,7 @@ class FileHandler {
         return new Promise((resolve) => {
           this.files = Array.from(this.fileInput.files);
           this.updateFileDisplay();
+          hideDownloadButton(); // Добавлено
           resolve();
         });
       }
@@ -45,6 +46,7 @@ class FileHandler {
             file.type === 'text/plain' || file.name.endsWith('.txt')
           );
           this.updateFileDisplay();
+          hideDownloadButton(); // Добавлено
           resolve();
         });
       }
@@ -124,6 +126,7 @@ class FileHandler {
     removeFile(index) {
       this.files.splice(index, 1);
       this.updateFileDisplay();
+      hideDownloadButton(); // Добавлено
     }
   
     // Форматирование размера файла

@@ -11,7 +11,7 @@
     
     <div class="section">
         <h2>Тематическая классификация текстов</h2>
-        <p><strong>Текст для классификации</strong></p>
+        <p><strong>Тексты для классификации</strong></p>
         
         <div class="file-upload" id="fileUploadArea">
             <div>Загрузите или прертащите файлы (.txt)</div>
@@ -26,7 +26,7 @@
         </div>
         
         <div class="checkbox-group">
-            <p><strong>Получить рубрики ГРНТИ</strong></p>
+            <p><strong>Рубрики ГРНТИ</strong></p>
             <div class="checkbox-item">
                 <input type="checkbox" id="level1" checked>
                 <label for="level1">1-го уровня</label>
@@ -38,10 +38,6 @@
             <div class="checkbox-item">
                 <input type="checkbox" id="level3" checked>
                 <label for="level3">3-го уровня</label>
-            </div>
-            <div class="checkbox-item">
-                <input type="checkbox" id="normalization" checked>
-                <label for="normalization">С нормализацией вероятностей</label>
             </div>
             <div class="checkbox-item">
                 <input type="checkbox" id="decoding" checked>
@@ -73,14 +69,6 @@
         <h2>Результаты классификации</h2>
         <div id="classificationResults"></div>
     </div>
-
-    <!-- Добавьте индикатор загрузки
-    <div class="modal" id="loadingModal" style="display: none; background-color: rgba(0,0,0,0.7);">
-        <div class="modal-content" style="text-align: center; background: transparent; box-shadow: none;">
-            <div style="color: white; font-size: 18px; margin-bottom: 15px;">Идет классификация...</div>
-            <div class="loader" style="border: 5px solid #f3f3f3; border-top: 5px solid #0066cc; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-        </div>
-    </div> -->
 
     <!-- Стало: -->
     <div class="modal" id="loadingModal" style="display: none; background-color: rgba(0,0,0,0.7);">
@@ -121,5 +109,6 @@
     <script src="js/fileHandler.js"></script>
     <script src="js/api.js"></script>
     <script src="js/main.js"></script>
+    <button id="downloadBtn" class="download-btn" style="display: none;">Скачать результаты</button>
 </body>
 </html>

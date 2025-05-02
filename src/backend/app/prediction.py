@@ -7,14 +7,10 @@ from transformers import AutoModelForSequenceClassification
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 from torch.utils.data import DataLoader
-import os
-import sys
 
 def prepair_model(
   n_classes, lora_model_path, pre_trained_model_name="DeepPavlov/rubert-base-cased"
 ):
-  old_stdout = sys.stdout # backup current stdout
-  sys.stdout = open(os.devnull, "w")
 
   model = AutoModelForSequenceClassification.from_pretrained(
     pre_trained_model_name,
@@ -27,72 +23,7 @@ def prepair_model(
 
   PeftConfig.from_pretrained(lora_model_path)
   model = PeftModel.from_pretrained(model, lora_model_path, torch_dtype=torch.float16)
-  sys.stdout = old_stdout 
   return model
-
-def prepair_data_level1(file_path, format="multidoc"):
-  if format == "multidoc":
-    df_test = pd.read_csv(
-      file_path, sep="\t", encoding="cp1251", on_bad_lines="skip", index_col="id"
-    )
-    df_test["text"] = (
-      df_test["title"].apply(lambda x: x + " [SEP] ") + df_test["body"]
-    )
-    df_test["text"] = (
-      df_test["text"].apply(lambda x: str(x) + " [SEP] ") + df_test["keywords"]
-    )
-    df_test = df_test.dropna(subset=["text"], axis=0)
-    df_test = df_test.drop(columns=["title", "keywords", "body"])
-  elif format == "plain":
-    text = open(file_path, "r", encoding="cp1251").readlines()
-    text = "".join(text)
-    text = text.replace("\n", " ")
-    df_test = pd.DataFrame({"text": text, "correct": "###"}, index=["#"])
-    df_test.index.name='id'
-  return df_test
-
-def prepair_data_level2(df_test, preds, threshold):
-  y_pred_list = []
-  for pred in preds:
-    a = np.array(pred)
-    y_pred_list.append((a > threshold).tolist())
-  preds = y_pred_list
-
-  with open("my_grnti1_int.json", "r") as code_file:
-    grnti_mapping_dict_true_numbers = json.load(
-      code_file
-    )  # Загружаем файл с кодами
-
-  with open("GRNTI_1_ru.json", "r", encoding="utf-8") as code_file:
-    grnti_mapping_dict_true_names = json.load(code_file)  # Загружаем файл с кодами
-
-  list_GRNTI = []
-  for el in preds:
-    list_elments = []
-
-    for index, propab in enumerate(el):
-      if propab == 1:
-        list_elments.append(index)
-    list_GRNTI.append(list_elments)
-
-  grnti_mapping_dict_true_numbers_reverse = {
-    y: x for x, y in grnti_mapping_dict_true_numbers.items()
-  }
-  list_true_numbers_GRNTI = []
-  for list_el in list_GRNTI:
-    list_numbers = []
-    for el in list_el:
-      list_numbers.append(grnti_mapping_dict_true_numbers_reverse[el])
-    list_true_numbers_GRNTI.append(list_numbers)
-
-  list_thems = []
-  for list_true in list_true_numbers_GRNTI:
-    sring_per_element = ""
-    for el in list_true:
-      sring_per_element += grnti_mapping_dict_true_names[el] + "; "
-    list_thems.append(sring_per_element)
-  df_test.loc[:, 'text'] = df_test.loc[:, 'text'].radd(list_thems)
-  return df_test
 
 def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
   # Токенизация
@@ -165,8 +96,6 @@ def make_predictions(model, dataset_test, device):
   y_pred_list = []
   model.to(device)
 
-  # count = 0
-
   for batch in dataset_test:
 
     inputs = batch["input_ids"].to(device=device, dtype=torch.long)
@@ -175,7 +104,6 @@ def make_predictions(model, dataset_test, device):
     with torch.no_grad():
       output = model(input_ids=inputs, attention_mask=mask)
 
-    # Move logits and labels to CPU
     logits = output.logits.detach().cpu()
 
     logits_flatten = (torch.sigmoid(logits).numpy()).tolist()
@@ -185,62 +113,44 @@ def make_predictions(model, dataset_test, device):
   return y_pred_list
 
 
-def toRubrics(preds, level = 1, threshold = 0.5, decoding=True):
-  grnti_mapping_dict_true_numbers_list = []
-  grnti_mapping_dict_names_of_rubrics_list = []
+def get_responce_grnti_preds(preds, level = 1, threshold = 0.5, decoding=True):
 
-  for level_el in range(1, level+1):
-    with open("my_grnti{}_int.json".format(level_el), "r") as code_file:
-      grnti_mapping_dict_true_numbers = json.load(
-        code_file
-      )  # Загружаем файл с кодами
-      grnti_mapping_dict_true_numbers_list.append(grnti_mapping_dict_true_numbers)
-      if decoding:
-        with open("GRNTI_{}_ru.json".format(level_el), "r", encoding="utf-8") as name_file:
-          grnti_mapping_dict_names_of_rubrics = json.load(name_file)
-          grnti_mapping_dict_names_of_rubrics_list.append(grnti_mapping_dict_names_of_rubrics)
-
+  with open("my_grnti{}_int.json".format(level), "r") as code_file:
+    grnti_mapping_dict_true_numbers = json.load(
+      code_file
+    )  
+    if decoding:
+      with open("GRNTI_{}_ru.json".format(level), "r", encoding="utf-8") as name_file:
+        grnti_mapping_dict_names_of_rubrics = json.load(name_file)
 
   list_GRNTI = []
   for el in preds:
     list_elments = {}
 
     for index, propab in enumerate(el):
-      # if normalisation:
-      #   propab = np.array(propab)
-      #   min_propab = np.min(propab)
-      #   max_propab = np.max(propab)
-      #   propab = (propab - min_propab) / (max_propab - min_propab)
-      #   propab = propab.tolist()
       if propab >= threshold:
         list_elments[index] = propab
     list_GRNTI.append(list_elments)
 
-  grnti_mapping_dict_true_numbers_reverse_list = []
-  for dict_true_numbers in grnti_mapping_dict_true_numbers_list:
-    grnti_mapping_dict_true_numbers_reverse = {
-      y: x for x, y in dict_true_numbers.items()
-    }
-    grnti_mapping_dict_true_numbers_reverse_list.append(grnti_mapping_dict_true_numbers_reverse)
+  grnti_mapping_dict_true_numbers_reverse = {
+    y: x for x, y in grnti_mapping_dict_true_numbers.items()
+  }
   
   list_true_numbers_GRNTI = []
   for list_el in list_GRNTI:
 
-    list_numbers = {}
+    list_numbers = []
     for el in list_el:
-      code_of_grnti = grnti_mapping_dict_true_numbers_reverse_list[level-1][el]
-      list_numbers[code_of_grnti] = [list_el[el]]
+      data_for_one_text = {}
+      code_of_grnti = grnti_mapping_dict_true_numbers_reverse[el]
+
+      data_for_one_text['code'] = code_of_grnti
+      data_for_one_text['probability'] = list_el[el]
       if decoding:
-        list_numbers[code_of_grnti].append(grnti_mapping_dict_names_of_rubrics_list[level-1][code_of_grnti])
-
-      splited_list = code_of_grnti.split(".")[:level-1]
-      
-      for index in range(len(splited_list)):
-        index_str = ".".join(splited_list[:level - index])
-        list_numbers[index_str] = [None]
-        if decoding:
-              list_numbers[index_str].append(grnti_mapping_dict_names_of_rubrics_list[level - index - 2][index_str])
-
+        data_for_one_text['name'] = grnti_mapping_dict_names_of_rubrics[code_of_grnti]
+      list_numbers.append(data_for_one_text)
+    list_numbers = sorted(list_numbers,
+                          key=lambda x: (-x["probability"], x['code']))
     list_true_numbers_GRNTI.append(list_numbers)
 
   return list_true_numbers_GRNTI
