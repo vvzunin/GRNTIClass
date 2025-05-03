@@ -1,0 +1,10 @@
+{
+  "configPath": "config.json",
+  "description": {
+    "en": "Automation text classifier for GRNTI codes. {} {}",
+    "ru": "Автоматизированный классификатор текстов по кодам ГРНТИ. {} {}"
+  },
+  "language": "ru",
+  "name": "GRNTIClass",
+  "version": "1.3.1"
+}

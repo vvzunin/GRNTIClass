@@ -2,7 +2,7 @@ import datetime
 
 datetimeFormatOutput = "%d.%m.%Y %H:%M:%S.%f"
 
-messages = {
+messagesTexts = {
   "start": {
     "ru": "%s Программа запущена.",
     "en": "%s Programm started."
@@ -45,6 +45,6 @@ messages = {
   }
 }
 
-def printMessage(self, messageType, lang = "ru", args = ()):
+def printMessage(messageType, lang = "ru", args = ()):
   args = (datetime.datetime.now().strftime(datetimeFormatOutput), ) + args
-  print(messages[messageType][lang] % args)
+  print(messagesTexts[messageType][lang] % args)

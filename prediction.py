@@ -52,19 +52,19 @@ def prepair_data_level1(file_path, format="multidoc", encoding="cp1251"):
     df_test.index.name='id'
   return df_test
 
-def prepair_data_level2(path, df_test, preds, threshold):
+def prepair_data_level2(path, model_path, df_test, preds, threshold):
   y_pred_list = []
   for pred in preds:
     a = np.array(pred)
     y_pred_list.append((a > threshold).tolist())
   preds = y_pred_list
 
-  with open(path + "\\my_grnti1_int.json", "r") as code_file:
+  with open(os.path.join(model_path, "dict.json"), "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  # Загружаем файл с кодами
 
-  with open(path + "\\GRNTI_1_ru.json", "r", encoding="utf-8") as code_file:
+  with open(os.path.join(path, "dicts", "GRNTI_1_ru.json"), "r", encoding="utf-8") as code_file:
     grnti_mapping_dict_true_names = json.load(code_file)  # Загружаем файл с кодами
 
   list_GRNTI = []
@@ -136,6 +136,7 @@ def collate_fn(batch):
 
 def prepair_dataset(
   df_test,
+  workers,
   max_number_tokens=512,
   pre_trained_model_name="DeepPavlov/rubert-base-cased",
 ):
@@ -158,7 +159,7 @@ def prepair_dataset(
     }
   )
 
-  test_dataloader = DataLoader(dataset_test, batch_size=8, collate_fn=collate_fn)
+  test_dataloader = DataLoader(dataset_test, num_workers=workers, batch_size=8, collate_fn=collate_fn)
   return test_dataloader
 
 def make_predictions(model, dataset_test, device):
@@ -185,8 +186,8 @@ def make_predictions(model, dataset_test, device):
 
   return y_pred_list
 
-def toRubrics(path, preds, level = 1, threshold = 0.5):
-  with open(path + "\\my_grnti{}_int.json".format(level), "r") as code_file:
+def toRubrics(model_path, preds, threshold = 0.5):
+  with open(os.path.join(model_path, "dict.json"), "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  # Загружаем файл с кодами
@@ -226,4 +227,4 @@ def save_rubrics(dataset, list_true_numbers_GRNTI, args, prog, header = False, e
         k.append('{}-{:1.5f}'.format(key, value))
       res = '\\'.join(k)
     df.loc[indexes[i]] = [res, args['level'], args['language'], args['threshold'], prog['version'], args['normalisation'], dataset.iloc[i]['correct']]
-  df.to_csv(args['outFile'], sep='\t', mode='a', header=header, encoding=encoding)
+  df.to_csv(args['output_file'], sep='\t', mode='a', header=header, encoding=encoding)

@@ -10,7 +10,10 @@ defaultData = {
       "1": os.path.dirname(os.path.abspath(__file__)) + "\\models\\bert2\\bert_peft_level1",
       "2": os.path.dirname(os.path.abspath(__file__)) + "\\models\\bert2\\bert_peft_level2_with_labels",
       "3": "",
-      "description": "Модель на основе LORA для русского языка"
+      "description": {
+        "en": "Model based on LORA for russian language.",
+        "ru": "Модель на основе LORA для русского языка."
+      } 
     }
   }
 }
@@ -30,7 +33,7 @@ class Config():
         data["models"].update(defaultData["models"])
         self.__dict__ = data
       finally:
-        file.close()
+        file.close()    
     except IOError:
       printMessage("badConfig")
       quit()
