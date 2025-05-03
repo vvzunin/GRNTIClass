@@ -148,8 +148,8 @@ button:disabled {
 .file-input-wrapper {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 5px;
+    gap: 5px;
+    margin-top: 3px;
 }
 
 .file-input-button {
@@ -172,11 +172,11 @@ button:disabled {
 .file-list {
     list-style-type: none;
     padding: 0;
-    margin: 5px 0 0 0;
-    max-height: 200px;
+    margin: 2px 0 0 0;
+    max-height: 250px;
     overflow-y: auto;
     border: 1px solid #eee;
-    border-radius: 4px;
+    border-radius: 2px;
     padding: 5px;
 }
 
@@ -189,9 +189,12 @@ button:disabled {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1px 0;
+    padding: 0; /* Убрали padding сверху/снизу */
     border-bottom: 1px solid #f5f5f5;
+    min-height: 10px; /* Фиксированная минимальная высота */
 }
+
+
 /* 5px */
 .file-item:last-child {
     border-bottom: none;

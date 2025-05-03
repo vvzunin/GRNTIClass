@@ -1,4 +1,7 @@
 class API {
+// Асинхронная функция для работы с конфигурацией
+
+
     static async classify(files, params, progressCallback) {
         return new Promise((resolve, reject) => {
             const formData = new FormData();
@@ -15,7 +18,13 @@ class API {
             let totalFiles = 0;
             let processingComplete = false;
             
-            fetch('http://localhost:8000/classify', {
+            const currentHost = window.location.hostname;  // Получаем хост фронтенда
+            const currentPort = window.location.port;      // Получаем порт фронтенда
+
+
+            // URL для запроса конфигурации (файл config.json)
+
+            fetch(window.apiUrl, {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -46,8 +55,6 @@ class API {
                         if (line.trim() === '') continue;
                         
                         try {
-                            console.log("RAW LINE FROM SSE:", line);
-
                             const data = JSON.parse(line);
                             
                             switch(data.type) {

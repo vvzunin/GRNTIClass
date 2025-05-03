@@ -1,13 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from typing import List
 import json
 from .prediction import prepair_model, prepair_dataset, make_predictions, get_responce_grnti_preds
 from tqdm import tqdm
 import pandas as pd
 import torch
-
+import os
 
 app = FastAPI()
 
@@ -73,7 +74,7 @@ async def classify_files(
         try:
             yield json.dumps({
                 "type": "progress",
-                "progress": 20,
+                "progress": 0,
                 "message": "Подготовка данных",
                 "completed": 0,
                 "total_files": total_files
@@ -92,7 +93,7 @@ async def classify_files(
             number_of_levels = len(list_levels)
 
             for index, model_info in enumerate(list_levels):
-                progress = 20 + (75 / number_of_levels) * (index + 1)
+                progress = 10 + (90 / number_of_levels) * (index)
                 yield json.dumps({
                     "type": "progress",
                     "progress": progress,
@@ -108,7 +109,8 @@ async def classify_files(
                 predictions = get_responce_grnti_preds(predictions,
                                         model_info['level'], 
                                         threshold,
-                                        decoding=decoding)
+                                        decoding=decoding,
+                                        dir_for_model=model_info['model_name'])
                 for el_index, el_pred in enumerate(predictions):
                     predictions_list[el_index].extend(el_pred)
 
@@ -159,3 +161,20 @@ async def classify_files(
             "Connection": "keep-alive"
         }
     )
+
+# # Абсолютный путь к директории, которая находится выше
+# static_dir = os.path.join(os.path.dirname(__file__), '../..', 'static')
+
+# # Монтируем статическую директорию
+# app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# @app.get("/config")
+# async def get_config():
+#     # Путь к файлу config.json относительно монтированной директории
+#     config_file_path = os.path.join(static_dir, "config.json")
+    
+#     # Загружаем конфиг при запросе
+#     with open(config_file_path, "r") as f:
+#         config = json.load(f)
+    
+#     return config

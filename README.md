@@ -18,27 +18,30 @@
 ## Структура проекта
 ```
 └── 📁src
-    └── 📁backend                            # Папка для bakcend
+    └── 📁backend                            # Папка для backend
         └── 📁app
-            └── __init__.py                   # Папка для bakcend
-            └── api.py                        # Код для релизации bakcend
+            └── __init__.py                   # Папка для backend
+            └── api.py                        # Код для релизации backend
             └── prediction.py                 # Код для получения рубрик ГРНТИ
         └── 📁bert_peft_level1_extra             # Модель для классификации 1-го уровня ГРНТИ
+            └── my_grnti1_int.json  # Словарь кодировок рубрик для предсказания 1-го уронвя ГРНТИ
         └── 📁bert_peft_level2_with_labels_extra # Модель для классификации 2-го уровня ГРНТИ
+            └── my_grnti2_int.json  # Словарь кодировок рубрик для предсказания 2-го уронвя ГРНТИ
         └── GRNTI_1_ru.json                   # Словарь названий рубрик для 1-го уровня ГРНТИ
         └── GRNTI_2_ru.json                   # Словарь названий рубрик для 2-го уровня ГРНТИ
         └── GRNTI_3_ru.json                   # Словарь названий рубрик для 3-го уровня ГРНТИ
         └── main.py                           # Программа запуска сервера для backend
-        └── my_grnti1_int.json  # Словарь кодировок рубрик для предсказания 1-го уронвя ГРНТИ
-        └── my_grnti2_int.json  # Словарь кодировок рубрик для предсказания 1-го уронвя ГРНТИ
     └── 📁frontend                            # Папка для frontend
         └── 📁css                
             └── styles.css                     # Файл для стилей
         └── index.html                         # html страница приложения
         └── 📁js
-            └── api.js                         # Взаимодействие frontend и bakcend
+            └── api.js                         # Взаимодействие frontend и backend
             └── fileHandler.js                 # Настройка процесса получения файлов
             └── main.js                        # Основная логика для графического интерфеса
+            └── config_backend.js              # Получение port и host backend
+    └── 📁static
+        └── config.json                        # Файл json с port и host для backend
 ```
 ## API Endpoints
 POST /classify - Основной endpoint для классификации текстов

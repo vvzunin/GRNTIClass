@@ -13,11 +13,9 @@ function showDownloadButton() {
         downloadBtn.classList.remove('hidden');
     }, 10);
 }
-
-
+  
 
 document.addEventListener('DOMContentLoaded', function() {
-
 
     document.getElementById('level1').addEventListener('change', hideDownloadButton);
     document.getElementById('level2').addEventListener('change', hideDownloadButton);

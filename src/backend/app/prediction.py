@@ -113,14 +113,15 @@ def make_predictions(model, dataset_test, device):
   return y_pred_list
 
 
-def get_responce_grnti_preds(preds, level = 1, threshold = 0.5, decoding=True):
+def get_responce_grnti_preds(preds, level = 1, threshold = 0.5,
+                             decoding=True, dir_for_model = "."):
 
-  with open("my_grnti{}_int.json".format(level), "r") as code_file:
+  with open(f"{dir_for_model}/my_grnti{level}_int.json", "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  
     if decoding:
-      with open("GRNTI_{}_ru.json".format(level), "r", encoding="utf-8") as name_file:
+      with open(f"GRNTI_{level}_ru.json", "r", encoding="utf-8") as name_file:
         grnti_mapping_dict_names_of_rubrics = json.load(name_file)
 
   list_GRNTI = []
