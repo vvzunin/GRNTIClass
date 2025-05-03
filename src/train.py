@@ -833,7 +833,7 @@ def prepair_model(n_classes,
     model_peft.print_trainable_parameters()
 
 
-    return model
+    return model_peft
 
 # Функция подсчета всех метрик при валидации
 def prepair_compute_metrics(n_classes):
