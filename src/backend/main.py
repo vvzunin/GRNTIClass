@@ -11,7 +11,7 @@ if __name__ == "__main__":
     with open(config_file_path, "r") as f:
         config = json.load(f)
 
-    host = config["api"]["host"]
+    docker_host = config["api"]["docker_host"]
     port = config["api"]["port"]
 
-    uvicorn.run("app.api:app", host=host, port=port, reload=True)
+    uvicorn.run("app.api:app", host=docker_host, port=port, reload=True)
