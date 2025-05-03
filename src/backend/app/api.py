@@ -161,20 +161,3 @@ async def classify_files(
             "Connection": "keep-alive"
         }
     )
-
-# # Абсолютный путь к директории, которая находится выше
-# static_dir = os.path.join(os.path.dirname(__file__), '../..', 'static')
-
-# # Монтируем статическую директорию
-# app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# @app.get("/config")
-# async def get_config():
-#     # Путь к файлу config.json относительно монтированной директории
-#     config_file_path = os.path.join(static_dir, "config.json")
-    
-#     # Загружаем конфиг при запросе
-#     with open(config_file_path, "r") as f:
-#         config = json.load(f)
-    
-#     return config
