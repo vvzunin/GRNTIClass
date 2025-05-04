@@ -58,5 +58,6 @@ venv.bak/
 datasets/
 setup/
 models/
+venv_*/
 
 .vscode

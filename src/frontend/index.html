@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ВИНИТИ РАН - Классификация текстов</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <h1>ВИНИТИ РАН</h1>
+    
+    <div class="section">
+        <h2>Тематическая классификация текстов</h2>
+        <p><strong>Тексты для классификации</strong></p>
+        
+        <div class="file-upload" id="fileUploadArea">
+            <div>Загрузите или прертащите файлы (.txt)</div>
+            <div class="file-input-wrapper">
+                <label for="fileInput" class="file-input-button">Выбрать файлы</label>
+                <span class="file-status" id="fileStatus">Файл не выбран</span>
+                <input type="file" id="fileInput" class="file-input" accept=".txt" multiple>
+            </div>
+            <div class="file-info">
+                <ul class="file-list empty" id="fileList"></ul>
+            </div>
+        </div>
+        
+        <div class="checkbox-group">
+            <p><strong>Рубрики ГРНТИ</strong></p>
+            <div class="checkbox-item">
+                <input type="checkbox" id="level1" checked>
+                <label for="level1">1-го уровня</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="level2" checked>
+                <label for="level2">2-го уровня</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="level3" checked>
+                <label for="level3">3-го уровня</label>
+            </div>
+            <div class="checkbox-item">
+                <input type="checkbox" id="decoding" checked>
+                <label for="decoding">С расшифровкой кодов</label>
+            </div>
+        </div>
+
+        <div class="slider-container">
+            <div class="slider-title">
+                <p><strong>Порог вероятности</strong></p>
+                <span class="slider-value" id="sliderValue">0.50</span>
+            </div>
+            <div class="slider-wrapper">
+                <input type="range" min="0" max="100" value="50" step="1" class="slider" id="probabilitySlider">
+            </div>
+            <div class="slider-labels">
+                <span>0.0</span>
+                <span>0.25</span>
+                <span>0.5</span>
+                <span>0.75</span>
+                <span>1.0</span>
+            </div>
+        </div>
+    </div>
+
+    <button id="classifyBtn" disabled>Классифицировать</button>
+
+    <div class="section" id="resultsSection" style="display: none;">
+        <h2>Результаты классификации</h2>
+        <div id="classificationResults"></div>
+    </div>
+
+    <!-- Стало: -->
+    <div class="modal" id="loadingModal" style="display: none; background-color: rgba(0,0,0,0.7);">
+        <div class="modal-content" style="text-align: center; background: white; padding: 20px; border-radius: 5px; max-width: 500px;">
+            <h3 style="margin-top: 0;">Идет обработка файлов</h3>
+            <div id="progressText">Подготовка к обработке...</div>
+            <div class="progress-container" style="width: 100%; background-color: #f1f1f1; border-radius: 5px; margin: 15px 0;">
+                <div id="progressBar" style="width: 0%; height: 20px; background-color: #0066cc; border-radius: 5px; transition: width 0.3s;"></div>
+            </div>
+            <div id="fileProgress" style="font-size: 14px; color: #555;"></div>
+        </div>
+    </div>
+
+    <!-- Модальное окно подтверждения -->
+    <div class="modal" id="confirmationModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Подтверждение параметров</h3>
+            <div id="confirmationDetails"></div>
+            <div class="modal-buttons">
+                <button id="cancelBtn">Отмена</button>
+                <button id="confirmBtn">Подтвердить</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Уведомление об успехе -->
+    <div class="notification" id="successNotification">
+        <span class="notification-icon">✓</span>
+        <span id="notificationMessage"></span>
+        <span class="notification-close" onclick="hideNotification()">×</span>
+    </div>
+    <!-- Уведомление об ошибке -->
+    <div class="notification error-notification" id="errorNotification">
+        <span class="notification-icon">!</span>
+        <span id="errorMessage"></span>
+        <span class="notification-close" onclick="hideErrorNotification()">×</span>
+    </div>
+    <script src="js/config_backend.js"></script>
+    <script src="js/fileHandler.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+    <button id="downloadBtn" class="download-btn" style="display: none;">Скачать результаты</button>
+</body>
+</html>
