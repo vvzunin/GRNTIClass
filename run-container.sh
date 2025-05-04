@@ -12,7 +12,6 @@ fi
 # Чтение параметров через Python
 PORT=$(python -c "import json; f=open('$CONFIG_FILE'); data=json.load(f); print(data['api']['port']); f.close()")
 
-
 # Проверяем, что порт не пустой
 if [ -z "$PORT" ]; then
   read -p "Ошибка: порт не указан в config.json!"

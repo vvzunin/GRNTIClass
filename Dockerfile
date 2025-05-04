@@ -3,7 +3,7 @@ FROM python:3.8
 # WORKDIR /app
 
 # Копируем backend и конфиг
-COPY requirements.txt .
+COPY requirements_docker.txt .
 COPY requirements_pytorch.txt .
 COPY src/backend/main.py .
 COPY src/backend/GRNTI_*.json .
@@ -13,7 +13,7 @@ COPY src/backend/bert_peft_level2_with_labels_extra ./bert_peft_level2_with_labe
 COPY src/static/config.json ./static/config.json
 
 RUN pip install --no-cache-dir -r requirements_pytorch.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements_docker.txt
 
 # Запускаем сервер (порт будет взят из config.json)
 CMD ["python", "main.py"]

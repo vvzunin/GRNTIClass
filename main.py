@@ -104,6 +104,20 @@ import os
 import json
 from messages import *
 from config import *
+from help_message import get_help
+
+def show_help(ctx, param, value):
+    if value:
+        ctx.exit(ctx.get_help())
+
+def help_flag(func):
+    return click.option('--help', 
+                        is_flag=True, 
+                        expose_value=False, 
+                        is_eager=True, 
+                        callback=show_help, 
+                        help=get_help("help"))(func)
+
 
 def loadJSON(jsonPath):
   try:
@@ -132,14 +146,15 @@ lang = prog["language"]
   "-v",
   "--version",
   is_flag=True,
-  help="Показать версию программы")
+  help=get_help("version"))
 @click.option(
   "-l",
   "--lang",
   "lang",
   type=click.Choice(["ru", "en"]),
-  help="Смена языка интерфейса программы",
+  help=get_help("lang"),
 )
+@help_flag
 @click.pass_context
 def main(ctx, version, lang):
   if version:
@@ -150,25 +165,27 @@ def main(ctx, version, lang):
       json.dump(prog, f, indent=2, sort_keys=True, ensure_ascii=False)
   else:
     if ctx.invoked_subcommand is None:
-      click.echo("Программа запущена без комманд и флагов!")
+      click.echo(get_help("main_description"))
 
 
 @main.group(
-  invoke_without_command=False, help="Работа с классификационными моделями моделями"
+  invoke_without_command=False, help=get_help("models")
 )
+@help_flag
 def models():
   pass
 
 
-@models.command(help="Загрузка конфиг файла")
+@models.command(help=get_help("config"))
 @click.option(
   "-p",
   "--path",
   "path",
   type=click.Path(exists=True),
   default="config.json",
-  help="Путь к конфигурационному файлу",
+  help=get_help("config_path"),
 )
+@help_flag
 def config(path):
   prog["configPath"] = path
   with open(progPath, "w", encoding="cp1251") as f:
@@ -176,48 +193,61 @@ def config(path):
   config = loadJSON(prog["configPath"])
   
 
-@models.command(help="Установка моделей из онлайна")
-@click.option("-m", "--model", type=str)
+@models.command(help=get_help("install"))
+@click.option("-m", "--model", type=str, help=get_help("model"))
+@help_flag
 def install(model):
   print(model)
 
 
-@models.command(help="Вывод списка моделей")
+@models.command(help=get_help("list"))
 @click.option(
   "-o",
   "--online",
   default=False,
   is_flag=True,
-  help="Вывод моделей, доступных онлайн",
+  help=get_help("list_online"),
 )
-def list(online):
+@help_flag
+def list_models(online):
   if online:
     printMessage("notComplete")
-  else:
-    data = loadJSON(prog["configPath"])
+    return
 
-    models_block = data.get("models", {})
-    for name, info in models_block.items():
+  data = loadJSON(prog["configPath"])
+  models_block = data.get("models", {})
+
+  for name, info in models_block.items():
+    if lang == "en":
+      print("Model name:", name)
+      print(f'\tLanguage: {info.get("textLang", "not specified")}')
+      print(f'\tDescription: {info.get("description", "no description")[lang]}')
+      print("\tModels' paths for classification:")
+    else:
       print("Имя модели:", name)
-      print(f'\tЯзык: "{info.get("textLang", "не указано")}"')
-      print(f'\tОписание: {info.get("description", "нет описания")}')
+      print(f'\tЯзык: {info.get("textLang", "не указано")}')
+      print(f'\tОписание: {info.get("description", "нет описания")[lang]}')
       print("\tПути к моделям для классификации:")
 
-      for key, value in info.items():
+    for key, value in info.items():
+      if key.isdigit():
         if value == "":
-          value = "Не указано"
-        if key.isdigit():
-          print(f"\tУровень {key} - {value}")
+          value = "Not specified" if lang == "en" else "Не указано"
+        if lang == "en":
+          print(f"\t    Level {key} - {value}")
+        else:
+          print(f"\t    Уровень {key} - {value}")
 
 
-@main.command(help="Сделать предсказание")
+
+@main.command(help=get_help("predict"))
 @click.option(
   "-i",
   "--input",
   "input_file",
   default="text.txt",
   type=click.Path(exists=True),
-  help="Путь к входному файлу",
+  help=get_help("input_file"),
 )
 @click.option(
   "-o",
@@ -225,7 +255,7 @@ def list(online):
   "output_file",
   default="result.csv",
   type=click.Path(),
-  help="Путь к результирующий файл",
+  help=get_help("output_file"),
 )
 @click.option(
   "-ei",
@@ -233,7 +263,7 @@ def list(online):
   "input_encode",
   default="cp1251",
   type=str,
-  help="Входна кодировка",
+  help=get_help("input_encode"),
 )
 @click.option(
   "-eo",
@@ -241,7 +271,7 @@ def list(online):
   "output_encode",
   default="cp1251",
   type=str,
-  help="Выходная кодировка",
+  help=get_help("output_encode"),
 )
 @click.option(
   "-id",
@@ -249,7 +279,7 @@ def list(online):
   "identifier",
   default="RGNTI3",
   type=click.Choice(["RGNTI1", "RGNTI2", "RGNTI3"]),
-  help="Идентификатор рубрикатора",
+  help=get_help("identifier"),
 )
 @click.option(
   "-p",
@@ -257,7 +287,7 @@ def list(online):
   "packet",
   default=1,
   type=int,
-  help="Размер пакета текстов для классификации",
+  help=get_help("packet"),
 )
 @click.option(
   "-f",
@@ -265,7 +295,7 @@ def list(online):
   "input_format",
   default="plain",
   type=click.Choice(["plain", "multidoc"]),
-  help="Формат файла",
+  help=get_help("input_format"),
 )
 @click.option(
   "-l",
@@ -273,7 +303,7 @@ def list(online):
   "language",
   default="ru",
   type=click.Choice(["ru", "en"]),
-  help="Язык",
+  help=get_help("language"),
 )
 @click.option(
   "-t",
@@ -281,7 +311,7 @@ def list(online):
   "threshold",
   type=click.FloatRange(0, 1),
   default=0.5,
-  help="Минимальная вероятность рубрики (порог)",
+  help=get_help("threshold"),
 )
 @click.option(
   "-n",
@@ -289,7 +319,7 @@ def list(online):
   "normalization",
   default="not",
   type=click.Choice(["not", "some", "all"]),
-  help="Нормализация",
+  help=get_help("normalization"),
 )
 @click.option(
   "-dv",
@@ -297,11 +327,11 @@ def list(online):
   "device",
   type=click.Choice(["cpu", "cuda:0"]),
   default="cpu",
-  help="Выбор устройства выполнения",
+  help=get_help("device"),
 )
-@click.option("-d", "--dialog", "dialog", help="Диалоговое окно")
+@click.option("-d", "--dialog", "dialog", help=get_help("dialog"))
 @click.option(
-  "-s", "--silence", "silence", is_flag=True, help="Включение режима без логов"
+  "-s", "--silence", "silence", is_flag=True, help=get_help("silence")
 )
 @click.option(
   "-w",
@@ -309,8 +339,9 @@ def list(online):
   "workers",
   default=1,
   type=click.INT,
-  help="Максимальное количество процессов для загрузки данных",
+  help=get_help("workers"),
 )
+@help_flag
 def predict(
   input_file,
   output_file,
@@ -481,23 +512,46 @@ def predict(
     printMessage("finish")
 
 
-@main.command(help="Запустить сервер")
-@click.option("-h", "--host", "host", default="localhost", help="IP адрес")
-@click.option("-p", "--port", "port", default=8000, type=click.INT, help="Порт")
+@main.command(help=get_help("server"))
+@click.option("-h", "--host", "host", default="localhost", help=get_help("host"))
+@click.option("-p", "--port", "port", default=8000, type=click.INT, help=get_help("port"))
 @click.option(
   "-dv",
   "--device",
   "device",
   type=click.Choice(["cpu", "cuda:0"]),
   default="cpu",
-  help="Выбор устройства выполнения",
+  help=get_help("device"),
 )
 @click.option(
-  "-s", "--silence", "silence", is_flag=True, help="Включение режима без логов"
+  "-s", "--silence", "silence", is_flag=True, help=get_help("silence")
 )
+@help_flag
 def server(host, port, device, silence):
-  pass
+  if silence:
+    sys.stdout = None
+    sys.stderr = None 
 
+  config_path = os.path.join(os.path.dirname(__file__), "src", "static", "config.json")
+  config = loadJSON(config_path)
+
+  config["api"]["local_host"] = host
+  config["api"]["port"] = port
+  config["device"] = device
+
+  try:
+    with open(config_path, "w", encoding="utf-8") as file:
+      json.dump(config, file, indent=2, ensure_ascii=False)
+  except IOError as e:
+      printMessage("BadbadConfig")
+  
+  sh_path = "run-container.sh"
+  exit_code = os.system(f"bash {sh_path}")
+
+  if exit_code != 0:
+    printMessage("serverError")
+  
+   
 
 if __name__ == "__main__":
   main()

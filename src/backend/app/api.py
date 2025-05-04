@@ -85,7 +85,14 @@ async def classify_files(
     
             dataset_loader = prepair_dataset(pd.DataFrame({"text":files_texts}))
 
-            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            config_path = os.path.join(os.path.dirname(__file__), "..", "..", "static", "config.json")
+            try:
+                with open(config_path, "r", encoding="utf-8") as file:
+                    device_name = json.load(file)["device"]
+            except IOError as e:
+                print(f"Device name load error {e}")
+  
+            device = torch.device(device_name)
 
             predictions_list =  [[] for i in range(total_files)]
             print(f"{list_levels=}")
