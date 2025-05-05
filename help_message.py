@@ -79,10 +79,6 @@ HELP_MESSAGES = {
         "ru": "Нормализация.",
         "en": "Normalization."
     },
-    "device": {
-        "ru": "Выбор устройства выполнения.",
-        "en": "Choose computation device."
-    },
     "dialog": {
         "ru": "Диалоговое окно.",
         "en": "Dialog window."
