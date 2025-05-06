@@ -106,19 +106,6 @@ from messages import *
 from config import *
 from help_message import get_help
 
-def show_help(ctx, param, value):
-    if value:
-        ctx.exit(ctx.get_help())
-
-def help_flag(func):
-    return click.option('--help', 
-                        is_flag=True, 
-                        expose_value=False, 
-                        is_eager=True, 
-                        callback=show_help, 
-                        help=get_help("help"))(func)
-
-
 def loadJSON(jsonPath):
   try:
     file = open(jsonPath, "r", encoding="cp1251")
@@ -132,10 +119,20 @@ def loadJSON(jsonPath):
     quit()
   return None
 
-configPath = "config.json"
-progPath = "prog.json"
+progPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prog.json")
 prog = loadJSON(progPath)
-lang = prog["language"]
+
+def show_help(ctx, param, value):
+    if value:
+        ctx.exit(ctx.get_help())
+
+def help_flag(func):
+    return click.option('--help', 
+                        is_flag=True, 
+                        expose_value=False, 
+                        is_eager=True, 
+                        callback=show_help, 
+                        help=get_help("help", prog["language"]))(func)
 
 @click.group(
   invoke_without_command=True,
@@ -146,13 +143,13 @@ lang = prog["language"]
   "-v",
   "--version",
   is_flag=True,
-  help=get_help("version"))
+  help=get_help("version", prog["language"]))
 @click.option(
   "-l",
   "--lang",
   "lang",
   type=click.Choice(["ru", "en"]),
-  help=get_help("lang"),
+  help=get_help("lang", prog["language"]),
 )
 @help_flag
 @click.pass_context
@@ -165,25 +162,25 @@ def main(ctx, version, lang):
       json.dump(prog, f, indent=2, sort_keys=True, ensure_ascii=False)
   else:
     if ctx.invoked_subcommand is None:
-      click.echo(get_help("main_description"))
+      click.echo(get_help("main_description", prog["language"]))
 
 
 @main.group(
-  invoke_without_command=False, help=get_help("models")
+  invoke_without_command=False, help=get_help("models", prog["language"])
 )
 @help_flag
 def models():
   pass
 
 
-@models.command(help=get_help("config"))
+@models.command(help=get_help("config", prog["language"]))
 @click.option(
   "-p",
   "--path",
   "path",
   type=click.Path(exists=True),
-  default="config.json",
-  help=get_help("config_path"),
+  default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"),
+  help=get_help("config_path", prog["language"]),
 )
 @help_flag
 def config(path):
@@ -193,20 +190,20 @@ def config(path):
   config = loadJSON(prog["configPath"])
   
 
-@models.command(help=get_help("install"))
-@click.option("-m", "--model", type=str, help=get_help("model"))
+@models.command(help=get_help("install", prog["language"]))
+@click.option("-m", "--model", type=str, help=get_help("model", prog["language"]))
 @help_flag
 def install(model):
   print(model)
 
 
-@models.command(help=get_help("list"))
+@models.command(help=get_help("list", prog["language"]))
 @click.option(
   "-o",
   "--online",
   default=False,
   is_flag=True,
-  help=get_help("list_online"),
+  help=get_help("list_online", prog["language"]),
 )
 @help_flag
 def list_models(online):
@@ -218,36 +215,36 @@ def list_models(online):
   models_block = data.get("models", {})
 
   for name, info in models_block.items():
-    if lang == "en":
+    if prog["language"] == "en":
       print("Model name:", name)
       print(f'\tLanguage: {info.get("textLang", "not specified")}')
-      print(f'\tDescription: {info.get("description", "no description")[lang]}')
+      print(f'\tDescription: {info.get("description", "no description")[prog["language"]]}'),
       print("\tModels' paths for classification:")
     else:
       print("Имя модели:", name)
       print(f'\tЯзык: {info.get("textLang", "не указано")}')
-      print(f'\tОписание: {info.get("description", "нет описания")[lang]}')
+      print(f'\tОписание: {info.get("description", "нет описания")[prog["language"]]}')
       print("\tПути к моделям для классификации:")
 
     for key, value in info.items():
       if key.isdigit():
         if value == "":
-          value = "Not specified" if lang == "en" else "Не указано"
-        if lang == "en":
+          value = "Not specified" if prog["language"] == "en" else "Не указано"
+        if prog["language"] == "en":
           print(f"\t    Level {key} - {value}")
         else:
           print(f"\t    Уровень {key} - {value}")
 
 
 
-@main.command(help=get_help("predict"))
+@main.command(help=get_help("predict", prog["language"]))
 @click.option(
   "-i",
   "--input",
   "input_file",
   default="text.txt",
   type=click.Path(exists=True),
-  help=get_help("input_file"),
+  help=get_help("input_file", prog["language"]),
 )
 @click.option(
   "-o",
@@ -255,7 +252,7 @@ def list_models(online):
   "output_file",
   default="result.csv",
   type=click.Path(),
-  help=get_help("output_file"),
+  help=get_help("output_file", prog["language"]),
 )
 @click.option(
   "-ei",
@@ -263,7 +260,7 @@ def list_models(online):
   "input_encode",
   default="cp1251",
   type=str,
-  help=get_help("input_encode"),
+  help=get_help("input_encode", prog["language"]),
 )
 @click.option(
   "-eo",
@@ -271,7 +268,7 @@ def list_models(online):
   "output_encode",
   default="cp1251",
   type=str,
-  help=get_help("output_encode"),
+  help=get_help("output_encode", prog["language"]),
 )
 @click.option(
   "-id",
@@ -279,7 +276,7 @@ def list_models(online):
   "identifier",
   default="RGNTI3",
   type=click.Choice(["RGNTI1", "RGNTI2", "RGNTI3"]),
-  help=get_help("identifier"),
+  help=get_help("identifier", prog["language"]),
 )
 @click.option(
   "-p",
@@ -287,7 +284,7 @@ def list_models(online):
   "packet",
   default=1,
   type=int,
-  help=get_help("packet"),
+  help=get_help("packet", prog["language"]),
 )
 @click.option(
   "-f",
@@ -295,7 +292,7 @@ def list_models(online):
   "input_format",
   default="plain",
   type=click.Choice(["plain", "multidoc"]),
-  help=get_help("input_format"),
+  help=get_help("input_format", prog["language"]),
 )
 @click.option(
   "-l",
@@ -303,7 +300,7 @@ def list_models(online):
   "language",
   default="ru",
   type=click.Choice(["ru", "en"]),
-  help=get_help("language"),
+  help=get_help("language", prog["language"]),
 )
 @click.option(
   "-t",
@@ -311,7 +308,7 @@ def list_models(online):
   "threshold",
   type=click.FloatRange(0, 1),
   default=0.5,
-  help=get_help("threshold"),
+  help=get_help("threshold", prog["language"]),
 )
 @click.option(
   "-n",
@@ -319,7 +316,7 @@ def list_models(online):
   "normalization",
   default="not",
   type=click.Choice(["not", "some", "all"]),
-  help=get_help("normalization"),
+  help=get_help("normalization", prog["language"]),
 )
 @click.option(
   "-dv",
@@ -327,11 +324,11 @@ def list_models(online):
   "device",
   type=click.Choice(["cpu", "cuda:0"]),
   default="cpu",
-  help=get_help("device"),
+  help=get_help("device", prog["language"]),
 )
-@click.option("-d", "--dialog", "dialog", help=get_help("dialog"))
+@click.option("-d", "--dialog", "dialog", help=get_help("dialog", prog["language"]))
 @click.option(
-  "-s", "--silence", "silence", is_flag=True, help=get_help("silence")
+  "-s", "--silence", "silence", is_flag=True, help=get_help("silence", prog["language"])
 )
 @click.option(
   "-w",
@@ -339,7 +336,7 @@ def list_models(online):
   "workers",
   default=1,
   type=click.INT,
-  help=get_help("workers"),
+  help=get_help("workers", prog["language"]),
 )
 @help_flag
 def predict(
@@ -394,12 +391,13 @@ def predict(
       "device": device,
       "workers": workers,
     }
-    config = loadJSON(configPath)
+    config = loadJSON(prog["configPath"])
+    print(config["models"][config["modelType"]]["1"])
     model1 = (
       None
       if config["models"][config["modelType"]]["1"] == ""
       else prepair_model(
-        n_classes=36, lora_model_path=config["models"][config["modelType"]]["1"]
+        n_classes=36, lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"])
       )
     )
     model2 = None
@@ -410,7 +408,7 @@ def predict(
         if config["models"][config["modelType"]]["2"] == ""
         else prepair_model(
           n_classes=246,
-          lora_model_path=config["models"][config["modelType"]]["2"],
+          lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"])
         )
       )
     if identifier == "RGNTI3":
@@ -419,7 +417,7 @@ def predict(
         if config["models"][config["modelType"]]["3"] == ""
         else prepair_model(
           n_classes=0,
-          lora_model_path=config["models"][config["modelType"]]["3"],
+          lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["3"]),
         )
       )
 
@@ -452,7 +450,7 @@ def predict(
       predictions_level1 = make_predictions(model1, dataset_loader, device=device)
       if identifier == "RGNTI1":
         predictions_level1 = toRubrics(
-          config["models"][config["modelType"]]["1"],
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]),
           predictions_level1,
           threshold,
         )
@@ -467,7 +465,7 @@ def predict(
       else:
         df_test2 = prepair_data_level2(
           os.path.dirname(os.path.abspath(__file__)),
-          config["models"][config["modelType"]]["1"],
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]),
           df_test.iloc[i : i + packet],
           predictions_level1,
           threshold,
@@ -478,7 +476,7 @@ def predict(
         )
         if identifier == "RGNTI2":
           predictions_level2 = toRubrics(
-            config["models"][config["modelType"]]["2"],
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]),
             predictions_level2,
             threshold,
           )
@@ -493,7 +491,7 @@ def predict(
         else:
           printMessage("notComplete")
           predictions_level2 = toRubrics(
-            config["models"][config["modelType"]]["2"],
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]),
             predictions_level2,
             threshold,
           )
@@ -512,19 +510,19 @@ def predict(
     printMessage("finish")
 
 
-@main.command(help=get_help("server"))
-@click.option("-h", "--host", "host", default="localhost", help=get_help("host"))
-@click.option("-p", "--port", "port", default=8000, type=click.INT, help=get_help("port"))
+@main.command(help=get_help("server", prog["language"]))
+@click.option("-h", "--host", "host", default="localhost", help=get_help("host", prog["language"]))
+@click.option("-p", "--port", "port", default=8000, type=click.INT, help=get_help("port", prog["language"]))
 @click.option(
   "-dv",
   "--device",
   "device",
   type=click.Choice(["cpu", "cuda:0"]),
   default="cpu",
-  help=get_help("device"),
+  help=get_help("device", prog["language"]),
 )
 @click.option(
-  "-s", "--silence", "silence", is_flag=True, help=get_help("silence")
+  "-s", "--silence", "silence", is_flag=True, help=get_help("silence", prog["language"])
 )
 @help_flag
 def server(host, port, device, silence):

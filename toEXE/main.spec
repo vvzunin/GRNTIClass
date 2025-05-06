@@ -3,6 +3,7 @@
 
 a = Analysis([
     '../config.py',
+    '../help_message.py',
     '../main.py',
     '../messages.py',
     '../prediction.py'],
@@ -14,7 +15,8 @@ a = Analysis([
     ('../prog.json', '.'),
     ('../models/bert2', 'models/bert2'),
     ('../doc', 'doc'),
-    ('../examples', 'examples')],
+    ('../examples', 'examples'),
+    ('../run-container.sh', '.')],
   hiddenimports=[],
   hookspath=[],
   hooksconfig={},

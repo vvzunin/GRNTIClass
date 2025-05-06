@@ -24,7 +24,7 @@ def prepair_model(
   
   for param in model.parameters():
     param.requires_grad = False
-
+    
   PeftConfig.from_pretrained(lora_model_path)
   model = PeftModel.from_pretrained(model, lora_model_path, torch_dtype=torch.float16)
   sys.stdout = old_stdout 

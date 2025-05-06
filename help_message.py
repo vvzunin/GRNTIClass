@@ -117,17 +117,5 @@ HELP_MESSAGES = {
     }
 }
 
-import json
-
-try:
-    with open("prog.json", "r", encoding="cp1251") as file:
-        prog = json.load(file)
-        lang = prog["language"]
-
-except:
-    print("Can't open prog.json")
-    lang = "ru"
-
-
-def get_help(key: str) -> str:
-    return HELP_MESSAGES.get(key, {}).get(lang, "")
+def get_help(key: str, lang) -> str:
+  return HELP_MESSAGES.get(key, {}).get(lang, "")
