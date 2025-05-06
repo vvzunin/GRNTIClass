@@ -1,6 +1,6 @@
 FROM python:3.8
 
-# WORKDIR /app
+WORKDIR /app
 
 # Копируем backend и конфиг
 COPY requirements_docker.txt .
