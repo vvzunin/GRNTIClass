@@ -810,10 +810,10 @@ def prepair_model(n_classes,
     print(model)
 
     for name, param in zip(model.state_dict().items(), model.parameters()):
-        if name[0] in [    "classifier.dense.weight",
-    "classifier.dense.bias",
-    "classifier.out_proj.weight",
-    "classifier.out_proj.bias"]:
+        if name[0] in ["bert.pooler.dense.weight",
+                    "bert.pooler.dense.bias",
+                    "classifier.weight",
+                    "classifier.bias"]:
             param.requires_grad = True
         else:
             param.requires_grad = False
@@ -824,16 +824,17 @@ def prepair_model(n_classes,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
         bias="none",
-        target_modules= ["query", "key", "value"],
+        target_modules= ["query", "key"],
         task_type=TaskType.SEQ_CLS,
         inference_mode=False,
-        modules_to_save=['classifier']#["classifier"]
+        modules_to_save=['classifier', 'bert.pooler']#["classifier"]
     )
     model_peft = get_peft_model(model, config)
     model_peft.print_trainable_parameters()
 
 
     return model
+
 
 # Функция подсчета всех метрик при валидации
 def prepair_compute_metrics(n_classes):
