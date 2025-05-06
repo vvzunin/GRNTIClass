@@ -1,0 +1,16 @@
+{
+  "number_of_delteted_values": 15,
+  "minimal_number_of_elements_RGNTI2": 1,
+  "minimal_number_of_words": 10,
+  "max_number_tokens": 512,
+  "pre_trained_model_name": "deepvk/USER-bge-m3",
+  "r": 16,
+  "lora_alpha": 16,
+  "lora_dropout": 0.05,
+  "epoch": 8,
+  "batch_size": 8,
+  "weight_decay": 1e-06,
+  "warmup_steps": 10,
+  "fp16": true,
+  "optim": "adamw_bnb_8bit"
+}

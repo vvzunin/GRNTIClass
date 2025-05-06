@@ -810,10 +810,10 @@ def prepair_model(n_classes,
     print(model)
 
     for name, param in zip(model.state_dict().items(), model.parameters()):
-        if name[0] in ["deberta.pooler.dense.weight",
-                    "deberta.pooler.dense.bias",
-                    "classifier.weight",
-                    "classifier.bias"]:
+        if name[0] in [    "classifier.dense.weight",
+    "classifier.dense.bias",
+    "classifier.out_proj.weight",
+    "classifier.out_proj.bias"]:
             param.requires_grad = True
         else:
             param.requires_grad = False
@@ -824,10 +824,10 @@ def prepair_model(n_classes,
         lora_alpha=lora_alpha,
         lora_dropout=lora_dropout,
         bias="none",
-        target_modules= ["self.in_proj"],
+        target_modules= ["query", "key", "value"],
         task_type=TaskType.SEQ_CLS,
         inference_mode=False,
-        modules_to_save=['classifier', 'deberta.pooler']#["classifier"]
+        modules_to_save=['classifier']#["classifier"]
     )
     model_peft = get_peft_model(model, config)
     model_peft.print_trainable_parameters()
