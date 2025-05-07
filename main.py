@@ -509,6 +509,14 @@ def predict(
     del model3
     printMessage("finish")
 
+default_config = {
+    "api": {
+        "docker_host": "0.0.0.0",
+        "local_host": "localhost",
+        "port": 8000
+    },
+    "device": "cpu"
+}
 
 @main.command(help=get_help("server", prog["language"]))
 @click.option("-h", "--host", "host", default="localhost", help=get_help("host", prog["language"]))
@@ -530,26 +538,27 @@ def server(host, port, device, silence):
     sys.stdout = None
     sys.stderr = None 
 
-  config_path = os.path.join(os.path.dirname(__file__), "src", "static", "config.json")
-  config = loadJSON(config_path)
+  ends = ["backend", "frontend"]
+  for end in ends:
+    config_path = os.path.join(os.path.dirname(__file__), "src", end, "config.json")
+    if not os.path.exists(config_path):
+      with open(config_path, "w") as f:
+        json.dump(default_config, f, indent=2)
+    
+    config = loadJSON(config_path)
+    config["api"]["local_host"] = host
+    config["api"]["port"] = port
+    config["device"] = device
 
-  config["api"]["local_host"] = host
-  config["api"]["port"] = port
-  config["device"] = device
-
-  try:
     with open(config_path, "w", encoding="utf-8") as file:
       json.dump(config, file, indent=2, ensure_ascii=False)
-  except IOError as e:
-      printMessage("BadbadConfig")
-  
-  sh_path = "run-container.sh"
-  exit_code = os.system(f"bash {sh_path}")
 
-  if exit_code != 0:
-    printMessage("serverError")
+  from src.backend.main import backend_startup
   
-   
+  backend_startup()
+
+from multiprocessing import freeze_support
 
 if __name__ == "__main__":
+  freeze_support()
   main()

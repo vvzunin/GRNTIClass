@@ -2,13 +2,14 @@ import pandas as pd
 import numpy as np
 import json
 import torch
-from transformers import AutoTokenizer
-from transformers import AutoModelForSequenceClassification
+from transformers import BertForSequenceClassification, BertTokenizer
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 from torch.utils.data import DataLoader
 import os
 import sys
+
+os.environ["TRANSFORMERS_NO_ADDITIONAL_MODULES"] = "1"
 
 def prepair_model(
   n_classes, lora_model_path, pre_trained_model_name="DeepPavlov/rubert-base-cased"
@@ -16,7 +17,7 @@ def prepair_model(
   old_stdout = sys.stdout # backup current stdout
   sys.stdout = open(os.devnull, "w")
 
-  model = AutoModelForSequenceClassification.from_pretrained(
+  model = BertForSequenceClassification.from_pretrained(
     pre_trained_model_name,
     problem_type="multi_label_classification",
     num_labels=n_classes,
@@ -141,7 +142,7 @@ def prepair_dataset(
   pre_trained_model_name="DeepPavlov/rubert-base-cased",
 ):
 
-  tokenizer = AutoTokenizer.from_pretrained(
+  tokenizer = BertTokenizer.from_pretrained(
     pre_trained_model_name, do_lower_case=True
   )
 

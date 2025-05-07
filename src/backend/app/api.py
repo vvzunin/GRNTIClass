@@ -52,17 +52,16 @@ async def classify_files(
         }) + "\n"
 
         list_levels = []
-
         if level1:
-            list_levels.append({"level": 1, "model_name": 'bert_peft_level1_extra',
+            list_levels.append({"level": 1, "model_name": './models/bert2/bert_peft_level1',
                                "n_classes": 36})
         if level2:
             list_levels.append({"level": 2, 
-                               "model_name": 'bert_peft_level2_with_labels_extra',
+                               "model_name": './models/bert2/bert_peft_level2_with_labels',
                                "n_classes": 246})
         if level3:# нужно будет имзенить для 3-го уровня
             list_levels.append({"level": 2, 
-                               "model_name": 'bert_peft_level2_with_labels_extra',
+                               "model_name": './models/bert2/bert_peft_level2_with_labels',
                                "n_classes": 246})
         if not list_levels:
             yield json.dumps({
@@ -85,7 +84,7 @@ async def classify_files(
     
             dataset_loader = prepair_dataset(pd.DataFrame({"text":files_texts}))
 
-            config_path = os.path.join(os.path.dirname(__file__), "..", "..", "static", "config.json")
+            config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
             try:
                 with open(config_path, "r", encoding="utf-8") as file:
                     device_name = json.load(file)["device"]

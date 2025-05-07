@@ -2,8 +2,7 @@ import pandas as pd
 import numpy as np
 import json
 import torch
-from transformers import AutoTokenizer
-from transformers import AutoModelForSequenceClassification
+from transformers import BertTokenizer, BertForSequenceClassification
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 from torch.utils.data import DataLoader
@@ -12,7 +11,7 @@ def prepair_model(
   n_classes, lora_model_path, pre_trained_model_name="DeepPavlov/rubert-base-cased"
 ):
 
-  model = AutoModelForSequenceClassification.from_pretrained(
+  model = BertForSequenceClassification.from_pretrained(
     pre_trained_model_name,
     problem_type="multi_label_classification",
     num_labels=n_classes,
@@ -70,7 +69,7 @@ def prepair_dataset(
   pre_trained_model_name="DeepPavlov/rubert-base-cased",
 ):
 
-  tokenizer = AutoTokenizer.from_pretrained(
+  tokenizer = BertTokenizer.from_pretrained(
     pre_trained_model_name, do_lower_case=True
   )
 
@@ -116,12 +115,12 @@ def make_predictions(model, dataset_test, device):
 def get_responce_grnti_preds(preds, level = 1, threshold = 0.5,
                              decoding=True, dir_for_model = "."):
 
-  with open(f"{dir_for_model}/my_grnti{level}_int.json", "r") as code_file:
+  with open(f"{dir_for_model}/dict.json", "r") as code_file:
     grnti_mapping_dict_true_numbers = json.load(
       code_file
     )  
     if decoding:
-      with open(f"GRNTI_{level}_ru.json", "r", encoding="utf-8") as name_file:
+      with open(f"dicts/GRNTI_{level}_ru.json", "r", encoding="utf-8") as name_file:
         grnti_mapping_dict_names_of_rubrics = json.load(name_file)
 
   list_GRNTI = []

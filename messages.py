@@ -43,9 +43,9 @@ messagesTexts = {
     "ru": "%s Конфиг файл не найден или недоступен",
     "en": "%s Config file not found or unavailable"
   },
-  "serverError": {
-    "ru": "%s Не удаось запустить сервер",
-    "en": "%s Couldn't deploy the server"
+  "backendError": {
+    "ru": "%s Не удаось запустить backend",
+    "en": "%s Couldn't deploy the backend"
   }
 }
 
