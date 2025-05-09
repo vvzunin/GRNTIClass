@@ -13,7 +13,7 @@ a = Analysis([
     ('../dicts', 'dicts'),
     ('../config.json', '.'),
     ('../prog.json', '.'),
-    ('../models/bert2', 'models/bert2'),
+    ('../models', 'models'),
     ('../doc', 'doc'),
     ('../examples', 'examples'),
     ('../run-container.sh', '.'),
