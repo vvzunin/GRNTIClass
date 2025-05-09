@@ -58,6 +58,6 @@ venv.bak/
 datasets/
 setup/
 models/
-venv_*/
+*venv*/
 
 .vscode

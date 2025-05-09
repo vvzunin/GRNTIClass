@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONFIG_FILE="src/static/config.json"
+CONFIG_FILE="src/backend/config.json"
 
 # Проверяем существование файла конфига
 if [ ! -f "$CONFIG_FILE" ]; then

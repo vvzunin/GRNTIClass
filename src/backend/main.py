@@ -6,7 +6,7 @@ import os
 def backend_startup():
     # Загружаем конфиг
     # static_dir = os.path.join(os.path.dirname(__file__), '..', 'static')
-    config_file_path = os.path.join(os.path.dirname(__file__), "config.json") # static_dir
+    config_file_path = os.path.join("src/backend", "config.json") # static_dir os.path.dirname(__file__)
 
     with open(config_file_path, "r") as f:
         config = json.load(f)

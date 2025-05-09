@@ -1,15 +1,22 @@
 FROM python:3.8
 
-WORKDIR /workdir
+WORKDIR /work
 
 # Копируем backend и конфиг
 COPY requirements_docker.txt .
+
+# Копируем исходный код
+COPY src/backend/app src/backend/app
+
+COPY src/backend/config.json src/backend/config.json
 COPY src/backend/main.py .
-COPY src/backend/GRNTI_*.json .
-COPY src/backend/app ./app
-COPY src/backend/bert_peft_level1_extra ./bert_peft_level1_extra
-COPY src/backend/bert_peft_level2_with_labels_extra ./bert_peft_level2_with_labels_extra
-COPY src/static/config.json ./../static/config.json
+
+# Копируем данные и модели
+COPY dicts/ dicts/
+COPY models/ models/
+
+# Указываем рабочую директорию для приложения
+RUN ls -lR /work
 
 ARG TORCH_VARIANT=cpu
 RUN if [ "$TORCH_VARIANT" = "cuda" ]; then \
@@ -23,5 +30,4 @@ RUN if [ "$TORCH_VARIANT" = "cuda" ]; then \
 
 RUN pip install --no-cache-dir -r requirements_docker.txt
 RUN python -c "from transformers import AutoModelForSequenceClassification; AutoModelForSequenceClassification.from_pretrained('DeepPavlov/rubert-base-cased')"
-# Запускаем сервер (порт будет взят из config.json)
 CMD ["python", "main.py"]
