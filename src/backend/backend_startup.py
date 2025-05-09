@@ -1,4 +1,4 @@
-from src.backend.app.api import app
+# from src.backend.app.api import app
 import uvicorn
 import json
 import os
@@ -15,4 +15,4 @@ def backend_startup():
     local_host = config["api"]["local_host"]
     port = config["api"]["port"]
 
-    uvicorn.run("src.backend.app.api:app", host=local_host, port=port, reload=True)
+    uvicorn.run("src.backend.app.api:app", host=local_host, port=port, reload=False)

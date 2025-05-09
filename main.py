@@ -553,7 +553,7 @@ def server(host, port, device, silence):
     with open(config_path, "w", encoding="utf-8") as file:
       json.dump(config, file, indent=2, ensure_ascii=False)
 
-  from src.backend.main import backend_startup
+  from src.backend.backend_startup import backend_startup
   
   backend_startup()
 

@@ -7,9 +7,10 @@ COPY requirements_docker.txt .
 
 # Копируем исходный код
 COPY src/backend/app src/backend/app
-
+COPY src/backend/backend_startup.py src/backend/backend_startup.py
 COPY src/backend/config.json src/backend/config.json
-COPY src/backend/main.py .
+
+COPY src/backend/start_backend.py .
 
 # Копируем данные и модели
 COPY dicts/ dicts/
@@ -30,4 +31,4 @@ RUN if [ "$TORCH_VARIANT" = "cuda" ]; then \
 
 RUN pip install --no-cache-dir -r requirements_docker.txt
 RUN python -c "from transformers import AutoModelForSequenceClassification; AutoModelForSequenceClassification.from_pretrained('DeepPavlov/rubert-base-cased')"
-CMD ["python", "main.py"]
+CMD ["python", "start_backend.py"]
