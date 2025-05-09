@@ -53,16 +53,16 @@ async def classify_files(
 
         list_levels = []
         if level1:
-            list_levels.append({"level": 1, "model_name": './models/bert2/bert_peft_level1',
+            list_levels.append({"level": 1, "model_name": './models/model1/bert_peft_level1',
                                "n_classes": 36})
         if level2:
             list_levels.append({"level": 2, 
-                               "model_name": './models/bert2/bert_peft_level2_with_labels',
+                               "model_name": './models/model2/bert_peft_level2_with_labels_extra',
                                "n_classes": 246})
         if level3:# нужно будет имзенить для 3-го уровня
-            list_levels.append({"level": 2, 
-                               "model_name": './models/bert2/bert_peft_level2_with_labels',
-                               "n_classes": 246})
+            list_levels.append({"level": 3, 
+                               "model_name": './models/model3/bert_peft_level3_lora',
+                               "n_classes": 1265})
         if not list_levels:
             yield json.dumps({
                 "type": "error",
