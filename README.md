@@ -42,6 +42,26 @@
             └── config_backend.js              # Получение port и host backend
     └── 📁static
         └── config.json                        # Файл json с port и host для backend
+└── 📁train
+    └── preprocessing.py # Модуль предобработки данных 
+    └── test_prediction.py # Модуль создания статистических отчетов по результатам классификации
+    └── train.py # Модуль обучения
+    └── TrainSettings.py # Параметры обучения
+└── 📁examples # Примеры работы CLI
+└── 📁docs # Документация CLI
+└── 📁dicts # Словари с кодировками рубрик ГРНТИ
+└── 📁toEXE # Функционал для упаковки создания .exe файла для (CLI)
+└── config.json            # Основной конфигурационный файл (CLI)
+└── config.py              # Модуль для работы с конфигурацией (CLI)
+└── Dockerfile             # Файл для создания Docker-образа backend
+└── help_message.py        # Сообщения справки (CLI)
+└── main.py                # Главный модуль приложения (CLI)
+└── messages.py            # Сообщения для пользовательского интерфейса 
+└── prediction.py          # Логика предсказаний и классификации (CLI)
+└── prog.json              # Настройки программы (CLI)
+└── requirements.txt       # Зависимости для локальной установки (CLI)
+└── requirements_docker.txt # Зависимости для Docker-контейнера (backend)
+└── run-container.sh       # Скрипт для запуска Docker-контейнера (backend)
 ```
 ## API Endpoints
 POST /classify - Основной endpoint для классификации текстов
