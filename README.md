@@ -1,4 +1,4 @@
-# VINITI_Text_Classification
+# GRNTIClass - классфикация научных текстов по кодам ГРНТИ
 
 ## Датасеты
 Ввиду ограничений на размер файлов в github, необходимо скачать папку [datasets](https://vvzunin.me:10003/d/s/xfHnY40x4YOicNSECWYRfpbL6wxkXcZS/1ZHuNDJrT7zJV-l3JLp_FWtvbrUlfMPn-rrMgTa1ZSws) для дальнейшей работы в данную директорию.
@@ -82,3 +82,13 @@ level3: Включить классификацию 3-го уровня (bool)
 decoding: Включить расшифровку кодов (bool)
 
 threshold: Порог вероятности (float)
+
+## Дополнительная информация
+
+Больше информации о предыдущих версиях и разработках можно найти в следующих публикация и репозиториях:
+1. Романов, А. Ю. Применение методов машинного обучения для решения задачи автоматической рубрикации статей по УДК / А. Ю. Романов, К. Е. Ломотин, Е. С. Козлова // Информационные технологии. – 2017. – Т. 23, № 6. – С. 418-423. – EDN YSLQPP.
+2. Romanov, A., Kozlova, E., Lomotin, K. (2018). Application of NLP Algorithms: Automatic Text Classifier Tool. In: Alexandrov, D., Boukhanovsky, A., Chugunov, A., Kabanov, Y., Koltsova, O. (eds) Digital Transformation and Global Society. DTGS 2018. Communications in Computer and Information Science, vol 859. Springer, Cham. doi: 10.1007/978-3-030-02846-6_25
+3. A. Romanov, K. Lomotinand E. Kozlova, “Application of Natural Language Processing Algorithms to the Task of Automatic Classification of Russian Scientific Texts”, <i>Data Science Journal</i>, vol. 18, no. 1, p. 37, 2019, doi: 10.5334/dsj-2019-037.
+4. Kusakin, I.K., Fedorets, O.V. & Romanov, A.Y. Classification of Short Scientific Texts. Sci. Tech. Inf. Proc. 50, 176–183 (2023). doi: 10.3103/S0147688223030024
+5. ATC_Automatic-Text-Classification // GitHub URL: https://github.com/RomeoMe5/ATC_Automatic-Text-Classification
+6. ECS_Experiment-Conduction-System // GitHub URL: https://github.com/RomeoMe5/ECS_Experiment-Conduction-System
