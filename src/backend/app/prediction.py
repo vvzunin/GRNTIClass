@@ -14,6 +14,7 @@ def prepair_model(
         pre_trained_model_name,
         problem_type="multi_label_classification",
         num_labels=n_classes,
+        # use_safetensors=True
     )
 
     for param in model.parameters():

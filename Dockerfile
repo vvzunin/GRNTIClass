@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.9
 
 WORKDIR /work
 
@@ -30,5 +30,5 @@ RUN if [ "$TORCH_VARIANT" = "cuda" ]; then \
     pip install --index-url ${PIP_URL} ${TORCH_PKG}
 
 RUN pip install --no-cache-dir -r requirements_docker.txt
-RUN python -c "from transformers import AutoModelForSequenceClassification; AutoModelForSequenceClassification.from_pretrained('DeepPavlov/rubert-base-cased')"
+RUN python -c "from transformers import AutoModelForSequenceClassification; AutoModelForSequenceClassification.from_pretrained('DeepPavlov/rubert-base-cased', use_safetensors=True)"
 CMD ["python", "start_backend.py"]

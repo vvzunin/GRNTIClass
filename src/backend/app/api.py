@@ -14,7 +14,21 @@ app = FastAPI()
 # Настройки CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"
+        # "https://grsti-classification.ru",    # Замените на ваш домен Beget
+        # "http://your-domain.beget.tech",     # HTTP версия
+        # "https://your-subdomain.beget.tech", # Если используете поддомен
+        # "http://localhost:3000",             # Для локальной разработки
+        # "http://127.0.0.1:3000",            # Альтернативный localhost
+        # "http://localhost:8000",             # Для локальной разработки
+        # "http://127.0.0.1:8000",            # Альтернативный localhost
+        # "http://127.0.0.1:5500",
+        # "http://localhost:5500",
+        # "https://common-cats-smile.loca.lt",
+        # "https://breezy-meals-marry.loca.lt"
+        # "https://ninety-hats-itch.loca.lt"
+          # Альтернативный localhost
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -50,7 +64,9 @@ def send_sse_event(
     filename: Optional[str] = None,
     rubrics: Optional[List] = None,
     completed: Optional[int] = None,
-    total_files: Optional[int] = None
+    total_files: Optional[int] = None,
+    total: Optional[int] = None
+
 ) -> str:
     """Генерирует SSE-событие в формате JSON."""
     event_data = {"type": event_type}
@@ -60,6 +76,8 @@ def send_sse_event(
         event_data["message"] = message
     if filename:
         event_data["filename"] = filename
+    if total:
+        event_data["total"] = total
     if rubrics:
         event_data["rubrics"] = rubrics
     if completed is not None and total_files is not None:
