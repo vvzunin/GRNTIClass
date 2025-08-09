@@ -1,8 +1,15 @@
 
 fetch('config.json')
-.then(response => response.json())
+.then(response => {
+    console.log('Config response status:', response.status);
+    return response.json();
+})
 .then(config => {
-    const apiUrl = `http://${config.api.local_host}:${config.api.port}/classify`;
+    console.log('Loaded config:', config);
+    const apiUrl = `http://${config.api.host}:${config.api.port}/classify`;
     window.apiUrl = apiUrl;
     console.log("API URL:", apiUrl);
+})
+.catch(error => {
+    console.error('Error loading config:', error);
 });

@@ -4,6 +4,7 @@ from transformers import BertTokenizer, BertForSequenceClassification
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 from torch.utils.data import DataLoader
+import time
 
 
 def prepair_model(
@@ -46,7 +47,7 @@ def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
         input_ids.append(encoded_dict["input_ids"])
         # Добавляем attention mask (Отделяем padding от non-padding токенов).
         attention_masks.append(encoded_dict["attention_mask"])
-        # Добавляем token_type_ids, тк у нас есть [SEP] в тексах
+        # Добавляем token_type_ids, тк у нас есть [SEP] в текстах
         token_type_ids.append(encoded_dict["token_type_ids"])
 
     # Переводим листы в тензоры.
@@ -96,25 +97,50 @@ def prepair_dataset(
     return test_dataloader
 
 
-def make_predictions(model, dataset_test, device):
+def make_predictions(model, dataset_test, device, timeout_seconds=300):
+    """
+    Выполняет предсказания с таймаутом для предотвращения бесконечной работы
+    """
     model.eval()
     y_pred_list = []
     model.to(device)
+    
+    start_time = time.time()
+    batch_count = 0
+    total_batches = len(dataset_test)
+    
+    print(f"Начинаем предсказания для {total_batches} батчей")
 
     for batch in dataset_test:
+        batch_start_time = time.time()
+        batch_count += 1
+        
+        # Проверяем таймаут
+        if time.time() - start_time > timeout_seconds:
+            raise TimeoutError(f"Превышен таймаут предсказаний ({timeout_seconds}с)")
+        
+        print(f"Обработка батча {batch_count}/{total_batches}")
+        
+        try:
+            inputs = batch["input_ids"].to(device=device, dtype=torch.long)
+            mask = batch["attention_mask"].to(device=device)
 
-        inputs = batch["input_ids"].to(device=device, dtype=torch.long)
-        mask = batch["attention_mask"].to(device=device)
+            with torch.no_grad():
+                output = model(input_ids=inputs, attention_mask=mask)
 
-        with torch.no_grad():
-            output = model(input_ids=inputs, attention_mask=mask)
+            logits = output.logits.detach().cpu()
+            logits_flatten = (torch.sigmoid(logits).numpy()).tolist()
+            y_pred_list.extend(logits_flatten)
+            
+            batch_time = time.time() - batch_start_time
+            print(f"Батч {batch_count} обработан за {batch_time:.2f}с")
+            
+        except Exception as e:
+            print(f"Ошибка при обработке батча {batch_count}: {e}")
+            raise e
 
-        logits = output.logits.detach().cpu()
-
-        logits_flatten = (torch.sigmoid(logits).numpy()).tolist()
-
-        y_pred_list.extend(logits_flatten)
-
+    total_time = time.time() - start_time
+    print(f"Все предсказания выполнены за {total_time:.2f}с")
     return y_pred_list
 
 
@@ -126,7 +152,10 @@ def get_responce_grnti_preds(preds, level=1, threshold=0.5,
             code_file
         )
         if decoding:
-            with open(f"dicts/GRNTI_{level}_ru.json", "r",
+            # Используем абсолютный путь к файлам словарей
+            import os
+            dict_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "..","dicts", f"GRNTI_{level}_ru.json")
+            with open(dict_path, "r",
                       encoding="utf-8") as name_file:
                 grnti_mapping_dict_names_of_rubrics = json.load(name_file)
 

@@ -1,139 +1,82 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from typing import List, Dict, Any, Optional
+from typing import List
 import json
-from .prediction import prepair_model, prepair_dataset, make_predictions, \
-    get_responce_grnti_preds
 import pandas as pd
 import torch
 import os
+import time
+import gc
+
+from .prediction import (
+    prepair_model,
+    prepair_dataset,
+    make_predictions,
+    get_responce_grnti_preds,
+)
 
 app = FastAPI()
 
-# Настройки CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"
-        # "https://grsti-classification.ru",    # Замените на ваш домен Beget
-        # "http://your-domain.beget.tech",     # HTTP версия
-        # "https://your-subdomain.beget.tech", # Если используете поддомен
-        # "http://localhost:3000",             # Для локальной разработки
-        # "http://127.0.0.1:3000",            # Альтернативный localhost
-        # "http://localhost:8000",             # Для локальной разработки
-        # "http://127.0.0.1:8000",            # Альтернативный localhost
-        # "http://127.0.0.1:5500",
-        # "http://localhost:5500",
-        # "https://common-cats-smile.loca.lt",
-        # "https://breezy-meals-marry.loca.lt"
-        # "https://ninety-hats-itch.loca.lt"
-          # Альтернативный localhost
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-async def get_files_content(files: List[UploadFile]) -> List[str]:
-    contents = []
-    for file in files:
-        content = await file.read()
-        # assuming text files; adjust if binary
-        contents.append(content.decode())
-        # important: rewind the file for potential future reads
-        await file.seek(0)
-    return contents
+@app.get("/")
+async def root():
+    """Корневой эндпоинт для проверки доступности сервера."""
+    return {"message": "GRNTI Classification API is running", "status": "ok"}
 
 
-def load_device_config() -> torch.device:
-    """Загружает устройство (CPU/GPU) из config.json."""
-    config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
+@app.get("/health")
+async def health_check():
+    """Эндпоинт для проверки состояния бэкенда."""
     try:
-        with open(config_path, "r", encoding="utf-8") as file:
-            device_name = json.load(file)["device"]
-        return torch.device(device_name)
-    except (IOError, json.JSONDecodeError) as e:
-        raise RuntimeError(f"Ошибка загрузки конфига: {e}")
+        health_status = {
+            "status": "healthy",
+            "message": "Backend is working correctly",
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "components": {
+                "api": "ok",
+                "torch": (
+                    "ok"
+                    if torch.cuda.is_available() or torch.backends.mps.is_available()
+                    else "cpu_only"
+                ),
+            },
+        }
 
+        model_paths = [
+            "./models/model1/bert_peft_level1",
+            "./models/model2/bert_peft_level2_with_labels_extra",
+            "./models/model3/bert_peft_level3_lora",
+        ]
 
-def send_sse_event(
-    event_type: str,
-    progress: Optional[int] = None,
-    message: Optional[str] = None,
-    filename: Optional[str] = None,
-    rubrics: Optional[List] = None,
-    completed: Optional[int] = None,
-    total_files: Optional[int] = None,
-    total: Optional[int] = None
+        model_status = {}
+        for i, path in enumerate(model_paths, 1):
+            key = f"model{i}"
+            model_status[key] = "available" if os.path.exists(path) else "not_found"
+        health_status["models"] = model_status
 
-) -> str:
-    """Генерирует SSE-событие в формате JSON."""
-    event_data = {"type": event_type}
-    if progress is not None:
-        event_data["progress"] = progress
-    if message:
-        event_data["message"] = message
-    if filename:
-        event_data["filename"] = filename
-    if total:
-        event_data["total"] = total
-    if rubrics:
-        event_data["rubrics"] = rubrics
-    if completed is not None and total_files is not None:
-        event_data["completed"] = completed
-        event_data["total_files"] = total_files
-    return json.dumps(event_data) + "\n"
+        dict_status = {}
+        for level in [1, 2, 3]:
+            dict_path = os.path.join("dicts", f"GRNTI_{level}_ru.json")
+            key = f"dict_level_{level}"
+            dict_status[key] = "available" if os.path.exists(dict_path) else "not_found"
+        health_status["dictionaries"] = dict_status
 
+        return health_status
 
-def prepare_grnti_levels(
-    level1: bool,
-    level2: bool,
-    level3: bool
-) -> List[Dict[str, Any]]:
-    """Формирует список уровней ГРНТИ для обработки."""
-    levels = []
-    if level1:
-        levels.append({
-            "level": 1,
-            "model_name": "./models/model1/bert_peft_level1",
-            "n_classes": 36
-        })
-    if level2:
-        levels.append({
-            "level": 2,
-            "model_name": "./models/model2/bert_peft_level2_with_labels_extra",
-            "n_classes": 246
-        })
-    if level3:
-        levels.append({
-            "level": 3,
-            "model_name": "./models/model3/bert_peft_level3_lora",
-            "n_classes": 1265
-        })
-    return levels
-
-
-async def process_single_level(
-    model_info: Dict[str, Any],
-    dataset_loader: Any,
-    device: torch.device,
-    threshold: float,
-    decoding: bool
-) -> List[List]:
-    """Обрабатывает предсказания для одного уровня ГРНТИ."""
-    model = prepair_model(
-        n_classes=model_info['n_classes'],
-        lora_model_path=model_info['model_name']
-    )
-    predictions = make_predictions(model, dataset_loader, device=device)
-    return get_responce_grnti_preds(
-        predictions,
-        model_info['level'],
-        threshold,
-        decoding=decoding,
-        dir_for_model=model_info['model_name']
-    )
+    except Exception as exc:
+        return {
+            "status": "unhealthy",
+            "message": f"Backend error: {str(exc)}",
+            "timestamp": pd.Timestamp.now().isoformat(),
+        }
 
 
 @app.post("/classify")
@@ -143,90 +86,163 @@ async def classify_files(
     level2: bool = Form(True),
     level3: bool = Form(True),
     decoding: bool = Form(True),
-    threshold: float = Form(0.5)
-) -> StreamingResponse:
-    async def event_stream():
+    threshold: float = Form(0.5),
+):
+    """
+    Классификация файлов по уровням ГРНТИ.
+    Возвращает обычный JSON ответ.
+    """
+    start_time = time.time()
+    try:
         total_files = len(files)
-        yield send_sse_event(
-            event_type="init",
-            total_files=total_files,
-            message=f"Начата обработка {total_files} файлов"
-        )
-
-        # 1. Подготовка уровней ГРНТИ
-        list_levels = prepare_grnti_levels(level1, level2, level3)
+        print(f"Начало классификации {total_files} файлов")
+        
+        # Подготовка уровней ГРНТИ
+        list_levels = []
+        if level1:
+            list_levels.append({
+                "level": 1,
+                "model_name": "./models/model1/bert_peft_level1",
+                "n_classes": 36
+            })
+        if level2:
+            list_levels.append({
+                "level": 2,
+                "model_name": "./models/model2/bert_peft_level2_with_labels_extra",
+                "n_classes": 246
+            })
+        if level3:
+            list_levels.append({
+                "level": 3,
+                "model_name": "./models/model3/bert_peft_level3_lora",
+                "n_classes": 1265
+            })
+        
         if not list_levels:
-            yield send_sse_event(
-                event_type="error",
-                message="Не выбран уровень ГРНТИ"
-            )
-            return
+            return {
+                "type": "error",
+                "message": "Не выбран уровень ГРНТИ"
+            }
 
-        # 2. Загрузка конфига и данных
-        yield send_sse_event(
-            event_type="progress",
-            progress=0,
-            message="Подготовка данных",
-            completed=0,
-            total_files=total_files
-        )
+        print(f"Будет обработано уровней: {len(list_levels)}")
 
+        # Читаем содержимое всех файлов
+        files_texts = []
+        files_names = []
+        for file in files:
+            try:
+                await file.seek(0)
+                content = await file.read()
+                if not content:
+                    raise ValueError("Файл пустой или не удалось прочитать содержимое")
+                try:
+                    decoded = content.decode("utf-8")
+                except UnicodeDecodeError:
+                    decoded = content.decode("cp1251", errors="replace")
+                files_texts.append(decoded)
+                files_names.append(file.filename)
+                print(f"Прочитан файл: {file.filename}, размер: {len(content)} байт")
+            except Exception as e:
+                print(f"Ошибка при чтении файла {file.filename}: {e}")
+                return {
+                    "type": "error",
+                    "message": f"Ошибка при чтении файла {file.filename}: {str(e)}"
+                }
+
+        if len(files_texts) == 0:
+            return {
+                "type": "error",
+                "message": "Нет корректных файлов для обработки"
+            }
+
+        print(f"Подготовка данных для {len(files_texts)} файлов")
+        # Подготовка данных для модели
+        dataset_loader = prepair_dataset(pd.DataFrame({"text": files_texts}))
+
+        # Загрузка конфигурации устройства
+        config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
         try:
-            files_texts = await get_files_content(files)
-            dataset_loader = prepair_dataset(
-                pd.DataFrame({"text": files_texts}))
-            device = load_device_config()
+            with open(config_path, "r", encoding="utf-8") as file:
+                device_name = json.load(file)["device"]
+        except IOError as e:
+            print(f"Device name load error {e}")
+            return {
+                "type": "error",
+                "message": f"Ошибка загрузки конфигурации: {str(e)}"
+            }
 
-            # 3. Обработка каждого уровня
-            predictions_list = [[] for _ in range(total_files)]
-            for index, model_info in enumerate(list_levels):
-                progress = 10 + (90 / len(list_levels)) * index
-                yield send_sse_event(
-                    event_type="progress",
-                    progress=progress,
-                    message="Получение классов "
-                    f"{model_info['level']}-го уровня",
-                    completed=0,
-                    total_files=total_files
+        device = torch.device(device_name)
+        print(f"Используется устройство: {device}")
+
+        # Обработка каждого уровня ГРНТИ
+        predictions_list = [[] for _ in range(len(files_texts))]
+
+        for model_info in list_levels:
+            level_start_time = time.time()
+            print(f"Загрузка модели для уровня {model_info['level']}: {model_info['model_name']}")
+            
+            try:
+                model = prepair_model(
+                    n_classes=model_info["n_classes"],
+                    lora_model_path=model_info["model_name"]
                 )
-
-                level_predictions = await process_single_level(
-                    model_info, dataset_loader, device, threshold, decoding
+                print(f"Модель уровня {model_info['level']} загружена за {time.time() - level_start_time:.2f}с")
+                
+                print(f"Выполнение предсказаний для уровня {model_info['level']}")
+                pred_start_time = time.time()
+                predictions = make_predictions(model, dataset_loader, device=device)
+                print(f"Предсказания уровня {model_info['level']} выполнены за {time.time() - pred_start_time:.2f}с")
+                
+                print(f"Обработка результатов уровня {model_info['level']}")
+                resp_start_time = time.time()
+                predictions = get_responce_grnti_preds(
+                    predictions,
+                    model_info["level"],
+                    threshold,
+                    decoding=decoding,
+                    dir_for_model=model_info["model_name"]
                 )
-                for i, preds in enumerate(level_predictions):
-                    predictions_list[i].extend(preds)
+                print(f"Результаты уровня {model_info['level']} обработаны за {time.time() - resp_start_time:.2f}с")
+                
+                for el_index, el_pred in enumerate(predictions):
+                    predictions_list[el_index].extend(el_pred)
+                
+                # Очищаем память
+                del model
+                torch.cuda.empty_cache() if torch.cuda.is_available() else gc.collect()
+                print(f"Уровень {model_info['level']} завершен за {time.time() - level_start_time:.2f}с")
+                
+            except Exception as e:
+                print(f"Ошибка при обработке уровня {model_info['level']}: {e}")
+                return {
+                    "type": "error",
+                    "message": f"Ошибка при обработке уровня {model_info['level']}: {str(e)}"
+                }
 
-            # 4. Отправка результатов
-            for i, file in enumerate(files, 1):
-                yield send_sse_event(
-                    event_type="result",
-                    filename=file.filename,
-                    rubrics=predictions_list[i - 1]
-                )
-                yield send_sse_event(
-                    event_type="file_complete",
-                    completed=i,
-                    total=total_files,
-                    message=f"Обработан файл {i}/{total_files}"
-                )
+        # Формирование результатов
+        results = []
+        for i, filename in enumerate(files_names):
+            results.append({
+                "filename": filename,
+                "rubrics": predictions_list[i]
+            })
 
-            yield send_sse_event(
-                event_type="complete",
-                message="Обработка завершена"
-            )
-
-        except Exception as e:
-            yield send_sse_event(
-                event_type="error",
-                message=str(e)
-            )
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive"
+        response_data = {
+            "type": "result",
+            "total_files": total_files,
+            "results": results,
+            "message": "Обработка завершена успешно",
+            "processing_time": f"{time.time() - start_time:.2f}с"
         }
-    )
+        
+        print(f"Классификация завершена за {time.time() - start_time:.2f}с")
+        return response_data
+
+    except Exception as e:
+        error_response = {
+            "type": "error",
+            "message": str(e),
+            "processing_time": f"{time.time() - start_time:.2f}с"
+        }
+        print(f"Ошибка в API: {error_response}")
+        return error_response

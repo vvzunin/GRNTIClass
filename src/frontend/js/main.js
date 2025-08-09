@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Сбрасываем прогресс перед началом
             updateProgress(0, "Подготовка к обработке...", 0, files.length);
             
+            console.log('Начинаем классификацию...');
             const classificationResults = await API.classify(
                 files, 
                 params, 
@@ -87,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             );
             
+            console.log('Результаты получены:', classificationResults);
             displayResults(classificationResults, params.decoding);
             loadingModal.style.display = 'none';
             
@@ -142,6 +144,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function displayResults(results, decoding) {
+        console.log('Отображение результатов:', results);
+        
         const resultsSection = document.getElementById('resultsSection');
         const resultsContainer = document.getElementById('classificationResults');
         const downloadBtn = document.getElementById('downloadBtn');

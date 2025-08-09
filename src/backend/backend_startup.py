@@ -5,14 +5,13 @@ import os
 
 def backend_startup():
     # Загружаем конфиг
-    config_file_path = os.path.join("src/backend", "config.json")
+    config_file_path = os.path.join(os.path.dirname(__file__), "config.json")
 
     with open(config_file_path, "r") as f:
         config = json.load(f)
 
-    # docker_host = config["api"]["docker_host"]
-    local_host = config["api"]["local_host"]
+    local_host = config["api"]["host"]
     port = config["api"]["port"]
 
-    uvicorn.run("src.backend.app.api:app",
+    uvicorn.run("backend.app.api:app",
                 host=local_host, port=port, reload=False)

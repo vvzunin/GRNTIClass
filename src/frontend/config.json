@@ -1,7 +1,6 @@
 {
   "api": {
-    "docker_host": "0.0.0.0",
-    "local_host": "localhost",
+    "host": "localhost",
     "port": 8000
   },
   "device": "cpu"

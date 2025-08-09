@@ -14,90 +14,52 @@ class API {
             formData.append('decoding', params.decoding);
             formData.append('threshold', params.threshold);
 
-            const results = [];
-            let totalFiles = 0;
-            let processingComplete = false;
+            // Имитация прогресса для пользователя
+            progressCallback(0, "Отправка файлов на сервер...", 0, files.length);
             
-            const currentHost = window.location.hostname;  // Получаем хост фронтенда
-            const currentPort = window.location.port;      // Получаем порт фронтенда
+            setTimeout(() => {
+                progressCallback(25, "Обработка файлов...", 0, files.length);
+            }, 500);
+            
+            setTimeout(() => {
+                progressCallback(50, "Классификация по уровням ГРНТИ...", 0, files.length);
+            }, 1000);
+            
+            setTimeout(() => {
+                progressCallback(75, "Формирование результатов...", 0, files.length);
+            }, 2000);
 
-
-            // URL для запроса конфигурации (файл config.json)
-
+            console.log('Отправляем запрос на:', window.apiUrl);
+            console.log('Данные формы:', formData);
+            
             fetch(window.apiUrl, {
                 method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'text/event-stream'
-                }
+                body: formData
             }).then(response => {
+                console.log('Получен ответ:', response.status, response.statusText);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
+                return response.json();
+            }).then(data => {
+                progressCallback(100, "Обработка завершена", files.length, files.length);
                 
-                const processChunk = ({ done, value }) => {
-                    if (done) {
-                        if (!processingComplete) {
-                            reject(new Error('Соединение закрыто до завершения обработки'));
-                        }
-                        return;
-                    }
-                    
-                    buffer += decoder.decode(value, { stream: true });
-                    const lines = buffer.split('\n');
-                    buffer = lines.pop() || '';
-                    
-                    for (const line of lines) {
-                        if (line.trim() === '') continue;
-                        
-                        try {
-                            const data = JSON.parse(line);
-                            
-                            switch(data.type) {
-                                case 'init':
-                                    totalFiles = data.total_files;
-                                    progressCallback(0, data.message, 0, totalFiles);
-                                    break;
-                                    
-                                case 'progress':
-                                    progressCallback(
-                                        data.progress,
-                                        data.message,
-                                        data.completed + 1,
-                                        data.total_files
-                                        // totalFiles
-                                    );
-                                    break;
-                                    
-                                case 'result':
-                                    results.push({
-                                        filename: data.filename,
-                                        rubrics: data.rubrics
-                                    });
-                                    break;
-                                    
-                                case 'complete':
-                                    processingComplete = true;
-                                    resolve(results);
-                                    break;
-                                    
-                                case 'error':
-                                    throw new Error(data.message);
-                            }
-                        } catch (e) {
-                            console.error('Error parsing SSE data:', e);
-                        }
-                    }
-                    
-                    return reader.read().then(processChunk);
-                };
+                if (data.type === 'error') {
+                    throw new Error(data.message);
+                }
                 
-                return reader.read().then(processChunk);
+                if (data.type === 'result') {
+                    // Преобразуем результат в формат, ожидаемый фронтендом
+                    const results = data.results || [];
+                    console.log('Получены результаты:', results);
+                    resolve(results);
+                } else {
+                    console.error('Неожиданный формат ответа:', data);
+                    throw new Error('Неожиданный формат ответа от сервера');
+                }
             }).catch(error => {
+                console.error('Ошибка API:', error);
                 reject(new Error(`Ошибка соединения: ${error.message}`));
             });
         });
