@@ -44,7 +44,8 @@ async def health_check():
                 "api": "ok",
                 "torch": (
                     "ok"
-                    if torch.cuda.is_available() or torch.backends.mps.is_available()
+                    if torch.cuda.is_available() or
+                    torch.backends.mps.is_available()
                     else "cpu_only"
                 ),
             },
@@ -59,14 +60,16 @@ async def health_check():
         model_status = {}
         for i, path in enumerate(model_paths, 1):
             key = f"model{i}"
-            model_status[key] = "available" if os.path.exists(path) else "not_found"
+            model_status[key] = "available" if os.path.exists(
+                path) else "not_found"
         health_status["models"] = model_status
 
         dict_status = {}
         for level in [1, 2, 3]:
             dict_path = os.path.join("dicts", f"GRNTI_{level}_ru.json")
             key = f"dict_level_{level}"
-            dict_status[key] = "available" if os.path.exists(dict_path) else "not_found"
+            dict_status[key] = "available" if os.path.exists(
+                dict_path) else "not_found"
         health_status["dictionaries"] = dict_status
 
         return health_status
@@ -96,7 +99,6 @@ async def classify_files(
     try:
         total_files = len(files)
         print(f"Начало классификации {total_files} файлов")
-        
         # Подготовка уровней ГРНТИ
         list_levels = []
         if level1:
@@ -108,7 +110,8 @@ async def classify_files(
         if level2:
             list_levels.append({
                 "level": 2,
-                "model_name": "./models/model2/bert_peft_level2_with_labels_extra",
+                "model_name":
+                "./models/model2/bert_peft_level2_with_labels_extra",
                 "n_classes": 246
             })
         if level3:
@@ -117,7 +120,7 @@ async def classify_files(
                 "model_name": "./models/model3/bert_peft_level3_lora",
                 "n_classes": 1265
             })
-        
+
         if not list_levels:
             return {
                 "type": "error",
@@ -134,20 +137,23 @@ async def classify_files(
                 await file.seek(0)
                 content = await file.read()
                 if not content:
-                    raise ValueError("Файл пустой или не удалось прочитать содержимое")
+                    raise ValueError(
+                        "Файл пустой или не удалось прочитать содержимое")
                 try:
                     decoded = content.decode("utf-8")
                 except UnicodeDecodeError:
                     decoded = content.decode("cp1251", errors="replace")
                 files_texts.append(decoded)
                 files_names.append(file.filename)
-                print(f"Прочитан файл: {file.filename}, размер: {len(content)} байт")
+                print(
+                    f"Прочитан файл: {file.filename}"
+                    f", размер: {len(content)} байт")
             except Exception as e:
                 print(f"Ошибка при чтении файла {file.filename}: {e}")
                 return {
                     "type": "error",
-                    "message": f"Ошибка при чтении файла {file.filename}: {str(e)}"
-                }
+                    "message":
+                    f"Ошибка при чтении файла {file.filename}: {str(e)}"}
 
         if len(files_texts) == 0:
             return {
@@ -160,7 +166,8 @@ async def classify_files(
         dataset_loader = prepair_dataset(pd.DataFrame({"text": files_texts}))
 
         # Загрузка конфигурации устройства
-        config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
+        config_path = os.path.join(
+            os.path.dirname(__file__), "..", "config.json")
         try:
             with open(config_path, "r", encoding="utf-8") as file:
                 device_name = json.load(file)["device"]
@@ -179,20 +186,29 @@ async def classify_files(
 
         for model_info in list_levels:
             level_start_time = time.time()
-            print(f"Загрузка модели для уровня {model_info['level']}: {model_info['model_name']}")
-            
+            print(
+                f"Загрузка модели для уровня {model_info['level']}:"
+                f" {model_info['model_name']}")
+
             try:
                 model = prepair_model(
                     n_classes=model_info["n_classes"],
                     lora_model_path=model_info["model_name"]
                 )
-                print(f"Модель уровня {model_info['level']} загружена за {time.time() - level_start_time:.2f}с")
-                
-                print(f"Выполнение предсказаний для уровня {model_info['level']}")
+                print(
+                    f"Модель уровня {model_info['level']} загружена за "
+                    f"{time.time() - level_start_time:.2f}с")
+
+                print(
+                    f"Выполнение предсказаний для уровня "
+                    f"{model_info['level']}")
                 pred_start_time = time.time()
-                predictions = make_predictions(model, dataset_loader, device=device)
-                print(f"Предсказания уровня {model_info['level']} выполнены за {time.time() - pred_start_time:.2f}с")
-                
+                predictions = make_predictions(
+                    model, dataset_loader, device=device)
+                print(
+                    f"Предсказания уровня {model_info['level']} "
+                    f"выполнены за {time.time() - pred_start_time:.2f}с")
+
                 print(f"Обработка результатов уровня {model_info['level']}")
                 resp_start_time = time.time()
                 predictions = get_responce_grnti_preds(
@@ -202,22 +218,28 @@ async def classify_files(
                     decoding=decoding,
                     dir_for_model=model_info["model_name"]
                 )
-                print(f"Результаты уровня {model_info['level']} обработаны за {time.time() - resp_start_time:.2f}с")
-                
+                print(
+                    f"Результаты уровня {model_info['level']} обработаны за"
+                    f" {time.time() - resp_start_time:.2f}с")
+
                 for el_index, el_pred in enumerate(predictions):
                     predictions_list[el_index].extend(el_pred)
-                
+
                 # Очищаем память
                 del model
-                torch.cuda.empty_cache() if torch.cuda.is_available() else gc.collect()
-                print(f"Уровень {model_info['level']} завершен за {time.time() - level_start_time:.2f}с")
-                
+                (torch.cuda.empty_cache() if torch.cuda.is_available()
+                 else gc.collect())
+                print(
+                    f"Уровень {model_info['level']} завершен за "
+                    f"{time.time() - level_start_time:.2f}с")
+
             except Exception as e:
-                print(f"Ошибка при обработке уровня {model_info['level']}: {e}")
+                print(
+                    f"Ошибка при обработке уровня {model_info['level']}: {e}")
                 return {
                     "type": "error",
-                    "message": f"Ошибка при обработке уровня {model_info['level']}: {str(e)}"
-                }
+                    "message": f"Ошибка при обработке уровня"
+                    f" {model_info['level']}: {str(e)}"}
 
         # Формирование результатов
         results = []
@@ -234,7 +256,7 @@ async def classify_files(
             "message": "Обработка завершена успешно",
             "processing_time": f"{time.time() - start_time:.2f}с"
         }
-        
+
         print(f"Классификация завершена за {time.time() - start_time:.2f}с")
         return response_data
 

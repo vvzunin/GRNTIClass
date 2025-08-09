@@ -104,23 +104,24 @@ def make_predictions(model, dataset_test, device, timeout_seconds=300):
     model.eval()
     y_pred_list = []
     model.to(device)
-    
+
     start_time = time.time()
     batch_count = 0
     total_batches = len(dataset_test)
-    
+
     print(f"Начинаем предсказания для {total_batches} батчей")
 
     for batch in dataset_test:
         batch_start_time = time.time()
         batch_count += 1
-        
+
         # Проверяем таймаут
         if time.time() - start_time > timeout_seconds:
-            raise TimeoutError(f"Превышен таймаут предсказаний ({timeout_seconds}с)")
-        
+            raise TimeoutError(
+                f"Превышен таймаут предсказаний ({timeout_seconds}с)")
+
         print(f"Обработка батча {batch_count}/{total_batches}")
-        
+
         try:
             inputs = batch["input_ids"].to(device=device, dtype=torch.long)
             mask = batch["attention_mask"].to(device=device)
@@ -131,10 +132,10 @@ def make_predictions(model, dataset_test, device, timeout_seconds=300):
             logits = output.logits.detach().cpu()
             logits_flatten = (torch.sigmoid(logits).numpy()).tolist()
             y_pred_list.extend(logits_flatten)
-            
+
             batch_time = time.time() - batch_start_time
             print(f"Батч {batch_count} обработан за {batch_time:.2f}с")
-            
+
         except Exception as e:
             print(f"Ошибка при обработке батча {batch_count}: {e}")
             raise e
@@ -154,7 +155,13 @@ def get_responce_grnti_preds(preds, level=1, threshold=0.5,
         if decoding:
             # Используем абсолютный путь к файлам словарей
             import os
-            dict_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "..","dicts", f"GRNTI_{level}_ru.json")
+            dict_path = os.path.join(
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(__file__))),
+                "..",
+                "dicts",
+                f"GRNTI_{level}_ru.json")
             with open(dict_path, "r",
                       encoding="utf-8") as name_file:
                 grnti_mapping_dict_names_of_rubrics = json.load(name_file)
@@ -184,7 +191,7 @@ def get_responce_grnti_preds(preds, level=1, threshold=0.5,
             data_for_one_text['probability'] = list_el[el]
             if decoding:
                 data_for_one_text['name'] =\
-                      grnti_mapping_dict_names_of_rubrics[code_of_grnti]
+                    grnti_mapping_dict_names_of_rubrics[code_of_grnti]
             list_numbers.append(data_for_one_text)
         list_numbers = sorted(list_numbers,
                               key=lambda x: (-x["probability"], x['code']))
