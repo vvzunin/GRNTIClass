@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from transformers import BertTokenizer
 from typing import List
 import json
 import pandas as pd
@@ -7,6 +8,7 @@ import torch
 import os
 import time
 import gc
+
 
 from .prediction import (
     prepair_model,
@@ -24,6 +26,61 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+levels = [
+    {
+        "level": 1,
+        "model_name": "./models/model1/bert_peft_level1",
+        "n_classes": 36
+    },
+    {
+        "level": 2,
+        "model_name": "./models/model2/bert_peft_level2_with_labels_extra",
+        "n_classes": 246
+    },
+    {
+        "level": 3,
+        "model_name": "./models/model3/bert_peft_level3_lora",
+        "n_classes": 1265
+    }
+    ]
+
+
+print("🚀 Начинаем загрузку моделей ")
+print("=" * 60)
+
+print("📦 Загружаем модель уровня 1...")
+model_level_1 = prepair_model(
+    n_classes=levels[0]["n_classes"],
+    lora_model_path=levels[0]["model_name"]
+)
+print("✅ Модель уровня 1 успешно загружена")
+
+print("📦 Загружаем модель уровня 2...")
+model_level_2 = prepair_model(
+    n_classes=levels[1]["n_classes"],
+    lora_model_path=levels[1]["model_name"]
+)
+print("✅ Модель уровня 2 успешно загружена")
+
+print("📦 Загружаем модель уровня 3...")
+model_level_3 = prepair_model(
+    n_classes=levels[2]["n_classes"],
+    lora_model_path=levels[2]["model_name"]
+)
+print("✅ Модель уровня 3 успешно загружена")
+
+print("🔤 Загружаем токенизатор...")
+tokenizer = BertTokenizer.from_pretrained(
+    "DeepPavlov/rubert-base-cased",
+    do_lower_case=True
+)
+print("✅ Токенизатор успешно загружен")
+
+print("=" * 60)
+print("Все модели и токенизатор успешно загружены!")
+print("=" * 60)
 
 
 @app.get("/")
@@ -51,11 +108,7 @@ async def health_check():
             },
         }
 
-        model_paths = [
-            "./models/model1/bert_peft_level1",
-            "./models/model2/bert_peft_level2_with_labels_extra",
-            "./models/model3/bert_peft_level3_lora",
-        ]
+        model_paths = [level["model_name"] for level in levels]
 
         model_status = {}
         for i, path in enumerate(model_paths, 1):
@@ -82,29 +135,6 @@ async def health_check():
         }
 
 
-def _prepare_levels(level1, level2, level3):
-    levels = []
-    if level1:
-        levels.append({
-            "level": 1,
-            "model_name": "./models/model1/bert_peft_level1",
-            "n_classes": 36
-        })
-    if level2:
-        levels.append({
-            "level": 2,
-            "model_name": "./models/model2/bert_peft_level2_with_labels_extra",
-            "n_classes": 246
-        })
-    if level3:
-        levels.append({
-            "level": 3,
-            "model_name": "./models/model3/bert_peft_level3_lora",
-            "n_classes": 1265
-        })
-    return levels
-
-
 async def _read_files(files):
     files_texts = []
     files_names = []
@@ -121,11 +151,8 @@ async def _read_files(files):
                 decoded = content.decode("cp1251", errors="replace")
             files_texts.append(decoded)
             files_names.append(file.filename)
-            print(
-                f"Прочитан файл: {file.filename},"
-                f" размер: {len(content)} байт")
+
         except Exception as e:
-            print(f"Ошибка при чтении файла {file.filename}: {e}")
             return None, {
                 "type": "error",
                 "message": f"Ошибка при чтении файла {file.filename}: {str(e)}"
@@ -138,39 +165,26 @@ def _get_device(config_path):
         with open(config_path, "r", encoding="utf-8") as file:
             device_name = json.load(file)["device"]
         device = torch.device(device_name)
-        print(f"Используется устройство: {device}")
         return device, None
     except IOError as e:
-        print(f"Device name load error {e}")
         return None, {
             "type": "error",
             "message": f"Ошибка загрузки конфигурации: {str(e)}"
         }
 
 
-def _process_level(model_info, dataset_loader, device, threshold, decoding):
-    level_start_time = time.time()
-    print(
-        f"Загрузка модели для уровня {model_info['level']}:"
-        f" {model_info['model_name']}")
+def _process_level(model_info, dataset_loader, device,
+                   threshold, decoding):
     try:
-        model = prepair_model(
-            n_classes=model_info["n_classes"],
-            lora_model_path=model_info["model_name"]
-        )
-        print(
-            f"Модель уровня {model_info['level']} загружена за "
-            f"{time.time() - level_start_time:.2f}с")
+        if model_info["level"] == 1:
+            model = model_level_1
+        elif model_info["level"] == 2:
+            model = model_level_2
+        elif model_info["level"] == 3:
+            model = model_level_3
 
-        print(f"Выполнение предсказаний для уровня {model_info['level']}")
-        pred_start_time = time.time()
         predictions = make_predictions(model, dataset_loader, device=device)
-        print(
-            f"Предсказания уровня {model_info['level']} выполнены за"
-            f" {time.time() - pred_start_time:.2f}с")
 
-        print(f"Обработка результатов уровня {model_info['level']}")
-        resp_start_time = time.time()
         predictions = get_responce_grnti_preds(
             predictions,
             model_info["level"],
@@ -178,25 +192,28 @@ def _process_level(model_info, dataset_loader, device, threshold, decoding):
             decoding=decoding,
             dir_for_model=model_info["model_name"]
         )
-        print(
-            f"Результаты уровня {model_info['level']} обработаны за "
-            f"{time.time() - resp_start_time:.2f}с")
-
         # Очищаем память
         del model
         (torch.cuda.empty_cache() if torch.cuda.is_available()
          else gc.collect())
-        print(
-            f"Уровень {model_info['level']} завершен за "
-            f"{time.time() - level_start_time:.2f}с")
         return predictions, None
     except Exception as e:
-        print(f"Ошибка при обработке уровня {model_info['level']}: {e}")
         return None, {
             "type": "error",
             "message": "Ошибка при обработке уровня"
             f" {model_info['level']}: {str(e)}"
         }
+
+
+def _prepare_levels(level1, level2, level3):
+    levels_to_process = []
+    if level1:
+        levels_to_process.append(levels[0])
+    if level2:
+        levels_to_process.append(levels[1])
+    if level3:
+        levels_to_process.append(levels[2])
+    return levels_to_process
 
 
 @app.post("/classify")
@@ -210,22 +227,17 @@ async def classify_files(
 ):
     """
     Классификация файлов по уровням ГРНТИ.
-    Возвращает обычный JSON ответ.
+    Возвращает JSON с результатами классификации.
     """
     start_time = time.time()
     try:
         total_files = len(files)
-        print(f"Начало классификации {total_files} файлов")
-
-        # Подготовка уровней ГРНТИ
         list_levels = _prepare_levels(level1, level2, level3)
         if not list_levels:
             return {
                 "type": "error",
                 "message": "Не выбран уровень ГРНТИ"
             }
-        print(f"Будет обработано уровней: {len(list_levels)}")
-
         # Читаем содержимое всех файлов
         (files_texts, files_names), file_error = await _read_files(files)
         if file_error:
@@ -236,8 +248,9 @@ async def classify_files(
                 "message": "Нет корректных файлов для обработки"
             }
 
-        print(f"Подготовка данных для {len(files_texts)} файлов")
-        dataset_loader = prepair_dataset(pd.DataFrame({"text": files_texts}))
+        dataset_loader = prepair_dataset(
+            pd.DataFrame({"text": files_texts}),
+            tokenizer=tokenizer)
 
         # Загрузка конфигурации устройства
         config_path = os.path.join(
@@ -272,7 +285,6 @@ async def classify_files(
             "processing_time": f"{time.time() - start_time:.2f}с"
         }
 
-        print(f"Классификация завершена за {time.time() - start_time:.2f}с")
         return response_data
 
     except Exception as e:
@@ -281,5 +293,4 @@ async def classify_files(
             "message": str(e),
             "processing_time": f"{time.time() - start_time:.2f}с"
         }
-        print(f"Ошибка в API: {error_response}")
         return error_response

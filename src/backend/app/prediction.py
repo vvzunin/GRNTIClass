@@ -1,6 +1,6 @@
 import json
 import torch
-from transformers import BertTokenizer, BertForSequenceClassification
+from transformers import BertForSequenceClassification
 from datasets import Dataset
 from peft import PeftConfig, PeftModel
 from torch.utils.data import DataLoader
@@ -15,7 +15,6 @@ def prepair_model(
         pre_trained_model_name,
         problem_type="multi_label_classification",
         num_labels=n_classes,
-        # use_safetensors=True
     )
 
     for param in model.parameters():
@@ -69,18 +68,14 @@ def collate_fn(batch):
 
 
 def prepair_dataset(
-    df_test,
-    max_number_tokens=512,
-    pre_trained_model_name="DeepPavlov/rubert-base-cased",
+    df_test, tokenizer, max_number_tokens=512
 ):
 
-    tokenizer = BertTokenizer.from_pretrained(
-        pre_trained_model_name, do_lower_case=True
-    )
-
+    print(f"Токенизируем {len(df_test)} текстов...")
     input_ids_test, attention_masks_test, token_type_ids_test = (
         get_input_ids_attention_masks_token_type(
-            df_test, tokenizer=tokenizer, max_len=max_number_tokens
+            df_test, tokenizer=tokenizer,
+            max_len=max_number_tokens
         )
     )
 
@@ -109,8 +104,6 @@ def make_predictions(model, dataset_test, device, timeout_seconds=300):
     batch_count = 0
     total_batches = len(dataset_test)
 
-    print(f"Начинаем предсказания для {total_batches} батчей")
-
     for batch in dataset_test:
         batch_start_time = time.time()
         batch_count += 1
@@ -137,7 +130,6 @@ def make_predictions(model, dataset_test, device, timeout_seconds=300):
             print(f"Батч {batch_count} обработан за {batch_time:.2f}с")
 
         except Exception as e:
-            print(f"Ошибка при обработке батча {batch_count}: {e}")
             raise e
 
     total_time = time.time() - start_time
