@@ -7,13 +7,22 @@ defaultData = {
   "models": {
     "default": {
       "textLang": "ru",
-      "1": os.path.dirname(os.path.abspath(__file__)) + "\\models\\bert2\\bert_peft_level1",
-      "2": os.path.dirname(os.path.abspath(__file__)) + "\\models\\bert2\\bert_peft_level2_with_labels",
-      "3": "",
+      "1": {
+        "path": os.path.dirname(os.path.abspath(__file__)) + "\\models\\model1\\bert_peft_level1",
+        "n_classes": 36
+      },
+      "2": {
+        "path": os.path.dirname(os.path.abspath(__file__)) + "\\models\\model2\\bert_peft_level2_with_labels_extra",
+        "n_classes": 246
+      },
+      "3": {
+        "path": os.path.dirname(os.path.abspath(__file__)) + "\\models\\model3\\bert_peft_level3_lora",
+        "n_classes": 1265
+      },
       "description": {
         "en": "Model based on LORA for russian language.",
         "ru": "Модель на основе LORA для русского языка."
-      } 
+      }
     }
   }
 }

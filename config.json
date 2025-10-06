@@ -1,14 +1,39 @@
 {
-  "modelType": "lora",
+  "modelType": "default",
   "models": {
-    "lora": {
+    "default": {
       "textLang": "ru",
-      "1": "models\\bert2\\bert_peft_level1",
-      "2": "models\\bert2\\bert_peft_level2_with_labels",
-      "3": "",
+      "1": {
+        "path": "models\\model1\\bert_peft_level1",
+        "n_classes": 36
+      },
+      "2": {
+        "path": "models\\model2\\bert_peft_level2_with_labels_extra",
+        "n_classes": 246
+      },
+      "3": {
+        "path": "models\\model3\\bert_peft_level3_lora",
+        "n_classes": 1265
+      },
       "description": {
         "en": "Model based on LORA for russian language.",
-        "ru": "Модель на основе LORA для русского языка."
+        "ru": "пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ LORA пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ."
+      }
+    },
+    "default_en": {
+      "textLang": "en",
+      "1": {
+        "path": "models\\model1",
+        "n_classes": 36
+      },
+      "2": {
+        "path": "models\\model2",
+        "n_classes": 147
+      },
+      "3": {},
+      "description": {
+        "en": "Model based on LORA for russian language.",
+        "ru": "пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ LORA пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ."
       }
     }
   }

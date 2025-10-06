@@ -105,6 +105,7 @@ import json
 from messages import *
 from config import *
 from help_message import get_help
+from dialog import *
 
 def loadJSON(jsonPath):
   try:
@@ -326,7 +327,6 @@ def list_models(online):
   default="cpu",
   help=get_help("device", prog["language"]),
 )
-@click.option("-d", "--dialog", "dialog", help=get_help("dialog", prog["language"]))
 @click.option(
   "-s", "--silence", "silence", is_flag=True, help=get_help("silence", prog["language"])
 )
@@ -351,7 +351,6 @@ def predict(
   threshold,
   normalization,
   device,
-  dialog,
   silence,
   workers,
 ):
@@ -360,155 +359,170 @@ def predict(
     sys.stderr = None
   start = datetime.datetime.now()
   printMessage("start")
-  if dialog:
-    print("Development in progress!")
-  else:
-    from prediction import (
-      prepair_model,
-      prepair_data_level1,
-      prepair_data_level2,
-      prepair_dataset,
-      make_predictions,
-      save_rubrics,
-      toRubrics,
+  from prediction import (
+    prepair_model,
+    prepair_data_level1,
+    prepair_data_level2,
+    prepair_data_level3,
+    prepair_dataset,
+    make_predictions,
+    save_rubrics,
+    toRubrics,
+  )
+  from tqdm import tqdm
+  import torch
+
+  torch.cuda.empty_cache()
+  printMessage("libs")
+  params = {
+    "input_file": input_file,
+    "output_file": output_file,
+    "input_encode": input_encode,
+    "output_encode": output_encode,
+    "level": identifier,
+    "packet": packet,
+    "format": input_format,
+    "language": language,
+    "threshold": threshold,
+    "normalisation": normalization,
+    "device": device,
+    "workers": workers,
+  }
+  config = loadJSON(prog["configPath"])
+  model1 = (
+    prepair_model(
+      n_classes=config["models"][config["modelType"]]["1"]["n_classes"],
+      lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]["path"])
     )
-    from tqdm import tqdm
-    import torch
-
-    torch.cuda.empty_cache()
-    printMessage("libs")
-    params = {
-      "input_file": input_file,
-      "output_file": output_file,
-      "input_encode": input_encode,
-      "output_encode": output_encode,
-      "level": identifier,
-      "packet": packet,
-      "format": input_format,
-      "language": language,
-      "threshold": threshold,
-      "normalisation": normalization,
-      "device": device,
-      "workers": workers,
-    }
-    config = loadJSON(prog["configPath"])
-    print(config["models"][config["modelType"]]["1"])
-    model1 = (
-      None
-      if config["models"][config["modelType"]]["1"] == ""
-      else prepair_model(
-        n_classes=36, lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"])
+    if "path" in config["models"][config["modelType"]]["1"]
+    else None
+  )
+  model2 = None
+  model3 = None
+  if (identifier == "RGNTI2") or (identifier == "RGNTI3"):
+    model2 = (
+      prepair_model(
+        n_classes=config["models"][config["modelType"]]["2"]["n_classes"],
+        lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]["path"])
       )
+      if "path" in config["models"][config["modelType"]]["2"]
+      else None
     )
-    model2 = None
-    model3 = None
-    if (identifier == "RGNTI2") or (identifier == "RGNTI3"):
-      model2 = (
-        None
-        if config["models"][config["modelType"]]["2"] == ""
-        else prepair_model(
-          n_classes=246,
-          lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"])
-        )
+  if identifier == "RGNTI3":
+    model3 = (
+      prepair_model(
+        n_classes=config["models"][config["modelType"]]["3"]["n_classes"],
+        lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["3"]["path"]),
       )
-    if identifier == "RGNTI3":
-      model3 = (
-        None
-        if config["models"][config["modelType"]]["3"] == ""
-        else prepair_model(
-          n_classes=0,
-          lora_model_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["3"]),
-        )
-      )
-
-    if (
-      (model1 is None)
-      or (
-        (model2 is None)
-        and ((identifier == "RGNTI2") or (identifier == "RGNTI3"))
-      )
-      or ((model3 is None) and (identifier == "RGNTI3"))
-    ):
-      printMessage("modelError")
-      quit()
-
-    printMessage("startPredict")
-    df_test = prepair_data_level1(
-      input_file, format=input_format, encoding=input_encode
+      if "path" in config["models"][config["modelType"]]["3"]
+      else None
     )
-    device = torch.device(params["device"] if torch.cuda.is_available() else "cpu")
-    printMessage("device", "ru", (device,))
 
-    if normalization != "not":
-      printMessage("badFlag", "ru", ("-n", normalization))
-      quit()
+  if (
+    (model1 is None)
+    or (
+      (model2 is None)
+      and ((identifier == "RGNTI2") or (identifier == "RGNTI3"))
+    )
+    or ((model3 is None) and (identifier == "RGNTI3"))
+  ):
+    printMessage("modelError")
+    quit()
 
-    for i in tqdm(range(0, df_test.shape[0], packet)):
-      dataset_loader = prepair_dataset(
-        df_test.iloc[i : i + packet], workers=params["workers"]
+  printMessage("startPredict")
+  df_test = prepair_data_level1(
+    input_file, format=input_format, encoding=input_encode
+  )
+  device = torch.device(params["device"] if torch.cuda.is_available() else "cpu")
+  printMessage("device", "ru", (device,))
+
+  if normalization != "not":
+    printMessage("badFlag", "ru", ("-n", normalization))
+    quit()
+
+  for i in tqdm(range(0, df_test.shape[0], packet)):
+    dataset_loader = prepair_dataset(
+      df_test.iloc[i : i + packet], workers=params["workers"]
+    )
+    predictions_level1 = make_predictions(model1, dataset_loader, device=device)
+    if identifier == "RGNTI1":
+      predictions_level1 = toRubrics(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]["path"]),
+        predictions_level1,
+        threshold,
       )
-      predictions_level1 = make_predictions(model1, dataset_loader, device=device)
-      if identifier == "RGNTI1":
-        predictions_level1 = toRubrics(
-          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]),
-          predictions_level1,
+      save_rubrics(
+        df_test.iloc[i : i + packet],
+        predictions_level1,
+        params,
+        prog,
+        i == 0,
+        output_encode,
+      )
+    else:
+      df_test2 = prepair_data_level2(
+        os.path.dirname(os.path.abspath(__file__)),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]["path"]),
+        df_test.iloc[i : i + packet],
+        predictions_level1,
+        threshold,
+      )
+      dataset_loader2 = prepair_dataset(df_test2, workers=params["workers"])
+      predictions_level2 = make_predictions(
+        model2, dataset_loader2, device=device
+      )
+      if identifier == "RGNTI2":
+        predictions_level2 = toRubrics(
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]["path"]),
+          predictions_level2,
           threshold,
         )
         save_rubrics(
-          df_test.iloc[i : i + packet],
-          predictions_level1,
+          df_test2,
+          predictions_level2,
           params,
           prog,
           i == 0,
           output_encode,
         )
       else:
-        df_test2 = prepair_data_level2(
+        df_test3 = prepair_data_level3(
           os.path.dirname(os.path.abspath(__file__)),
-          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["1"]),
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]["path"]),
           df_test.iloc[i : i + packet],
           predictions_level1,
           threshold,
         )
-        dataset_loader2 = prepair_dataset(df_test2, workers=params["workers"])
-        predictions_level2 = make_predictions(
-          model2, dataset_loader2, device=device
+        dataset_loader3 = prepair_dataset(df_test3, workers=params["workers"])
+        predictions_level3 = make_predictions(
+          model3, dataset_loader3, device=device
         )
-        if identifier == "RGNTI2":
-          predictions_level2 = toRubrics(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]),
-            predictions_level2,
-            threshold,
-          )
-          save_rubrics(
-            df_test2,
-            predictions_level2,
-            params,
-            prog,
-            i == 0,
-            output_encode,
-          )
-        else:
-          printMessage("notComplete")
-          predictions_level2 = toRubrics(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["2"]),
-            predictions_level2,
-            threshold,
-          )
-          save_rubrics(
-            df_test2,
-            predictions_level2,
-            params,
-            prog,
-            i == 0,
-            output_encode,
-          )
+        predictions_level3 = toRubrics(
+          os.path.join(os.path.dirname(os.path.abspath(__file__)), config["models"][config["modelType"]]["3"]["path"]),
+          predictions_level3,
+          threshold,
+        )
+        save_rubrics(
+          df_test3,
+          predictions_level3,
+          params,
+          prog,
+          i == 0,
+          output_encode,
+        )
 
-    del model1
-    del model2
-    del model3
-    printMessage("finish")
+  del model1
+  del model2
+  del model3
+  printMessage("finish")
 
+# @predict.command(help=get_help("dialog", prog["language"]))
+# @help_flag
+# def dialog():
+#   start = datetime.datetime.now()
+#   printMessage("start")
+#   run_dialog(prog, loadJSON, printMessage)
+    
 default_config = {
     "api": {
         "docker_host": "0.0.0.0",

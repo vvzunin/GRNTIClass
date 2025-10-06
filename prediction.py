@@ -96,6 +96,49 @@ def prepair_data_level2(path, model_path, df_test, preds, threshold):
   df_test.loc[:, 'text'] = df_test.loc[:, 'text'].radd(list_thems)
   return df_test
 
+def prepair_data_level3(path, model_path, df_test, preds, threshold):
+  y_pred_list = []
+  for pred in preds:
+    a = np.array(pred)
+    y_pred_list.append((a > threshold).tolist())
+  preds = y_pred_list
+
+  with open(os.path.join(model_path, "dict.json"), "r") as code_file:
+    grnti_mapping_dict_true_numbers = json.load(
+      code_file
+    )  # Загружаем файл с кодами
+
+  with open(os.path.join(path, "dicts", "GRNTI_2_ru.json"), "r", encoding="utf-8") as code_file:
+    grnti_mapping_dict_true_names = json.load(code_file)  # Загружаем файл с кодами
+
+  list_GRNTI = []
+  for el in preds:
+    list_elments = []
+
+    for index, propab in enumerate(el):
+      if propab == 1:
+        list_elments.append(index)
+    list_GRNTI.append(list_elments)
+
+  grnti_mapping_dict_true_numbers_reverse = {
+    y: x for x, y in grnti_mapping_dict_true_numbers.items()
+  }
+  list_true_numbers_GRNTI = []
+  for list_el in list_GRNTI:
+    list_numbers = []
+    for el in list_el:
+      list_numbers.append(grnti_mapping_dict_true_numbers_reverse[el])
+    list_true_numbers_GRNTI.append(list_numbers)
+
+  list_thems = []
+  for list_true in list_true_numbers_GRNTI:
+    sring_per_element = ""
+    for el in list_true:
+      sring_per_element += grnti_mapping_dict_true_names[el] + "; "
+    list_thems.append(sring_per_element)
+  df_test.loc[:, 'text'] = df_test.loc[:, 'text'].radd(list_thems)
+  return df_test
+
 def get_input_ids_attention_masks_token_type(df, tokenizer, max_len):
   # Токенизация
   input_ids = []
